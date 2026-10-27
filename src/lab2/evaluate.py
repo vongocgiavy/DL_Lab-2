@@ -12,6 +12,7 @@ from torch.utils.data import DataLoader
 
 from lab2.checkpoint import load_checkpoint
 from lab2.config import ExperimentConfig
+from lab2.logger import get_logger, to_relative_path
 from lab2.models import build_model
 from lab2.utils import plot_confusion_matrix
 
@@ -82,12 +83,21 @@ def evaluate_checkpoint_file(
     Loads model state from checkpoint and runs test evaluation.
     Saves JSON metrics to outputs/metrics/ and Confusion Matrix to outputs/figures/.
     """
+    logger = get_logger()
+    rel_ckpt = to_relative_path(checkpoint_path)
+
     if not os.path.exists(checkpoint_path):
+        logger.error(f"Checkpoint file not found: '{rel_ckpt}'")
         raise FileNotFoundError(f"Checkpoint file not found: {checkpoint_path}")
 
     # Inspect checkpoint metadata to know model architecture and method
     device = torch.device("cpu")
-    raw_ckpt = torch.load(checkpoint_path, map_location=device)
+    try:
+        raw_ckpt = torch.load(checkpoint_path, map_location=device)
+    except Exception as e:
+        logger.exception(f"Failed to load checkpoint file at '{rel_ckpt}': {type(e).__name__}: {e}")
+        raise RuntimeError(f"Failed to load checkpoint file at '{checkpoint_path}': {e}")
+
     model_name = raw_ckpt.get("model_name", "resnet18")
     method = raw_ckpt.get("method", "transfer")
     exp_name = raw_ckpt.get("experiment_name", os.path.splitext(os.path.basename(checkpoint_path))[0])
@@ -111,7 +121,7 @@ def evaluate_checkpoint_file(
     )
 
     metrics["experiment_name"] = exp_name
-    metrics["checkpoint_evaluated"] = os.path.abspath(checkpoint_path)
+    metrics["checkpoint_evaluated"] = to_relative_path(checkpoint_path)
 
     # Save metrics JSON
     metrics_dir = os.path.join(outputs_dir, "metrics")
@@ -129,6 +139,11 @@ def evaluate_checkpoint_file(
         class_names=class_names,
         save_path=cm_path,
         title=f"Confusion Matrix: {exp_name}"
+    )
+
+    logger.info(
+        f"Evaluation completed for '{exp_name}': "
+        f"test_loss={metrics['test_loss']:.4f}, test_acc={metrics['test_accuracy']:.2f}%"
     )
 
     print(f"\nEvaluation Results for [{exp_name}]:")

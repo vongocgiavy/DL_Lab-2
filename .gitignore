@@ -26,6 +26,11 @@ outputs/figures/*
 !outputs/metrics/*.csv
 !outputs/figures/*.png
 
+# Logs
+logs/*.log
+logs/*.log.*
+!logs/.gitkeep
+
 # Environment
 .venv/
 env/

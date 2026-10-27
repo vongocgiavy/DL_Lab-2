@@ -1,0 +1,72 @@
+{
+  "experiment_name": "resnet18_transfer_bs32",
+  "config": {
+    "name": "resnet18_transfer_bs32",
+    "model_name": "resnet18",
+    "method": "transfer",
+    "epochs": 5,
+    "batch_size": 32,
+    "learning_rate": 0.001,
+    "weight_decay": 0.0001,
+    "description": "ResNet18 transfer learning with larger batch size (32)",
+    "optimizer": "adam",
+    "backbone_lr": null,
+    "num_classes": 10,
+    "image_size": 128,
+    "val_split": 0.1,
+    "seed": 42,
+    "device": "cuda",
+    "num_workers": 0,
+    "data_dir": "./data",
+    "checkpoints_dir": "./checkpoints",
+    "runs_dir": "./runs",
+    "outputs_dir": "./outputs",
+    "checkpoint_metric": "val_acc",
+    "group": "hparam"
+  },
+  "history": {
+    "train_loss": [
+      0.8544851898829142,
+      0.7246216714964973,
+      0.7104709105067782,
+      0.7004769952880011,
+      0.7028666517469618
+    ],
+    "train_acc": [
+      71.21555555555555,
+      75.08,
+      75.68,
+      76.16888888888889,
+      76.11777777777777
+    ],
+    "val_loss": [
+      0.686234114074707,
+      0.6360289630889893,
+      0.6400552059173584,
+      0.6220245705604553,
+      0.6286554244995117
+    ],
+    "val_acc": [
+      76.1,
+      78.44,
+      78.34,
+      78.92,
+      78.76
+    ],
+    "epoch_times": [
+      59.7349956035614,
+      58.34566617012024,
+      59.123592376708984,
+      73.83861041069031,
+      69.96338891983032
+    ]
+  },
+  "best_epoch": 4,
+  "best_metric": 78.92,
+  "total_time_seconds": 321.4169499874115,
+  "environment": {
+    "torch_version": "2.6.0+cu124",
+    "torchvision_version": "0.21.0+cu124",
+    "device": "cuda"
+  }
+}

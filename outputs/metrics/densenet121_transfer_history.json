@@ -1,0 +1,72 @@
+{
+  "experiment_name": "densenet121_transfer",
+  "config": {
+    "name": "densenet121_transfer",
+    "model_name": "densenet121",
+    "method": "transfer",
+    "epochs": 5,
+    "batch_size": 16,
+    "learning_rate": 0.001,
+    "weight_decay": 0.0001,
+    "description": "DenseNet121 with frozen backbone, training only classification head",
+    "optimizer": "adam",
+    "backbone_lr": null,
+    "num_classes": 10,
+    "image_size": 128,
+    "val_split": 0.1,
+    "seed": 42,
+    "device": "cuda",
+    "num_workers": 0,
+    "data_dir": "./data",
+    "checkpoints_dir": "./checkpoints",
+    "runs_dir": "./runs",
+    "outputs_dir": "./outputs",
+    "checkpoint_metric": "val_acc",
+    "group": "core"
+  },
+  "history": {
+    "train_loss": [
+      0.8038161953714159,
+      0.7082344667752584,
+      0.6999480918924014,
+      0.6927248224430614,
+      0.6860139725049337
+    ],
+    "train_acc": [
+      72.99555555555555,
+      76.01777777777778,
+      76.21777777777778,
+      76.44222222222223,
+      76.88888888888889
+    ],
+    "val_loss": [
+      0.6010219829559326,
+      0.5548153431296349,
+      0.5865920391082764,
+      0.5737493810176849,
+      0.5523200379133224
+    ],
+    "val_acc": [
+      79.1,
+      81.16,
+      80.26,
+      80.22,
+      81.84
+    ],
+    "epoch_times": [
+      109.40744686126709,
+      108.407559633255,
+      108.49095630645752,
+      108.46286201477051,
+      108.10891842842102
+    ]
+  },
+  "best_epoch": 5,
+  "best_metric": 81.84,
+  "total_time_seconds": 543.4674715995789,
+  "environment": {
+    "torch_version": "2.6.0+cu124",
+    "torchvision_version": "0.21.0+cu124",
+    "device": "cuda"
+  }
+}

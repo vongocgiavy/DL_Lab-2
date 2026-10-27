@@ -1,6 +1,6 @@
 """
 CLI script to run Lab 2 experiments (single experiment or all 4 sequentially).
-Supports --smoke-test flag for rapid CPU verification.
+Supports --smoke-test flag for rapid CPU verification and --device for GPU/CPU selection.
 """
 
 import argparse
@@ -14,6 +14,7 @@ sys.path.insert(0, os.path.join(PROJECT_ROOT, "src"))
 from lab2.config import get_all_experiment_names, load_config
 from lab2.data import get_dataloaders
 from lab2.evaluate import evaluate_checkpoint_file
+from lab2.logger import setup_logging, get_logger, to_relative_path
 from lab2.models import build_model, count_parameters
 from lab2.tensorboard_logger import TensorBoardLogger
 from lab2.train import run_training
@@ -25,7 +26,8 @@ def run_single_experiment(
     config_path: str = "./configs/config.yaml",
     smoke_test: bool = False,
     override_epochs: int = None,
-    override_batch_size: int = None
+    override_batch_size: int = None,
+    override_device: str = None
 ):
     overrides = {}
     if smoke_test:
@@ -35,6 +37,8 @@ def run_single_experiment(
         overrides["epochs"] = override_epochs
     if override_batch_size is not None:
         overrides["batch_size"] = override_batch_size
+    if override_device is not None:
+        overrides["device"] = override_device
 
     cfg = load_config(experiment_id=experiment_id, config_path=config_path, overrides=overrides)
 
@@ -44,6 +48,7 @@ def run_single_experiment(
     print(f"EXPERIMENT RUNNER: {cfg.name}")
     print(f"Description: {cfg.description}")
     print(f"Smoke Test Mode: {smoke_test}")
+    print(f"Compute Device: {cfg.device}")
     print(f"=======================================================")
 
     # Prepare Data
@@ -121,16 +126,28 @@ def main():
     parser.add_argument("--smoke-test", action="store_true", help="Run rapid smoke test on tiny subset (1 epoch) for pipeline verification.")
     parser.add_argument("--epochs", type=int, default=None, help="Override number of epochs.")
     parser.add_argument("--batch-size", type=int, default=None, help="Override batch size.")
+    parser.add_argument("--device", type=str, default=None, choices=["cpu", "cuda"], help="Override compute device ('cpu' or 'cuda').")
 
     args = parser.parse_args()
 
+    # Initialize logger
+    app_logger = setup_logging()
+
+    all_available = get_all_experiment_names(args.config)
+
     if not args.experiment and not args.all and not args.group:
-        all_available = get_all_experiment_names(args.config)
         print("Please specify --experiment <ID>, --group <core|hparam>, or --all.")
         print(f"Available experiments in {args.config}: {all_available}")
         sys.exit(1)
 
     if args.experiment:
+        if args.experiment not in all_available:
+            rel_config = to_relative_path(args.config)
+            app_logger.error(
+                f"Experiment '{args.experiment}' not found in configuration '{rel_config}'. Available: {all_available}"
+            )
+            print(f"[Error] Experiment '{args.experiment}' not found in {args.config}. Available: {all_available}")
+            sys.exit(1)
         experiments_to_run = [args.experiment]
     elif args.group:
         experiments_to_run = get_all_experiment_names(args.config, group=args.group)
@@ -138,26 +155,44 @@ def main():
         experiments_to_run = get_all_experiment_names(args.config, group="core")
 
     all_results = []
+    failed_experiments = []
     for exp_id in experiments_to_run:
-        res = run_single_experiment(
-            experiment_id=exp_id,
-            config_path=args.config,
-            smoke_test=args.smoke_test,
-            override_epochs=args.epochs,
-            override_batch_size=args.batch_size
-        )
-        all_results.append(res)
+        try:
+            res = run_single_experiment(
+                experiment_id=exp_id,
+                config_path=args.config,
+                smoke_test=args.smoke_test,
+                override_epochs=args.epochs,
+                override_batch_size=args.batch_size,
+                override_device=args.device
+            )
+            all_results.append(res)
+        except Exception as e:
+            app_logger.exception(
+                f"Experiment '{exp_id}' encountered exception: {type(e).__name__}: {e}"
+            )
+            failed_experiments.append((exp_id, f"{type(e).__name__}: {e}"))
 
-    print("\n" + "=" * 65)
-    print("ALL REQUESTED EXPERIMENTS COMPLETED")
-    print("=" * 65)
-    for r in all_results:
-        exp = r["experiment"]
-        best_val = r["train_results"]["best_metric"]
-        test_acc = r["test_metrics"]["test_accuracy"]
-        test_loss = r["test_metrics"]["test_loss"]
-        print(f"[{exp}] Best Val Acc: {best_val:.2f}% | Test Acc: {test_acc:.2f}% | Test Loss: {test_loss:.4f}")
-    print("=" * 65)
+    if all_results:
+        print("\n" + "=" * 65)
+        print("ALL REQUESTED EXPERIMENTS COMPLETED")
+        print("=" * 65)
+        for r in all_results:
+            exp = r["experiment"]
+            best_val = r["train_results"]["best_metric"]
+            test_acc = r["test_metrics"]["test_accuracy"]
+            test_loss = r["test_metrics"]["test_loss"]
+            print(f"[{exp}] Best Val Acc: {best_val:.2f}% | Test Acc: {test_acc:.2f}% | Test Loss: {test_loss:.4f}")
+        print("=" * 65)
+
+    if failed_experiments:
+        print("\n" + "=" * 65)
+        print("EXPERIMENT RUN SUMMARY: SOME EXPERIMENTS FAILED")
+        print("=" * 65)
+        for exp_id, err_msg in failed_experiments:
+            print(f"FAILED: [{exp_id}] -> {err_msg}")
+        print("=" * 65)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

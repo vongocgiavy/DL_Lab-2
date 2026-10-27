@@ -14,6 +14,7 @@ sys.path.insert(0, os.path.join(PROJECT_ROOT, "src"))
 from lab2.config import load_config, load_yaml
 from lab2.data import get_dataloaders
 from lab2.evaluate import evaluate_checkpoint_file
+from lab2.logger import setup_logging, get_logger, to_relative_path
 
 
 def main():
@@ -25,6 +26,8 @@ def main():
     parser.add_argument("--batch-size", type=int, default=16, help="Batch size for evaluation dataloader (default: 16).")
 
     args = parser.parse_args()
+
+    logger = setup_logging()
 
     yaml_data = load_yaml(args.config)
     global_cfg = yaml_data.get("global", {})
@@ -60,15 +63,26 @@ def main():
     print("=" * 65)
 
     for ckpt in checkpoint_paths:
+        rel_ckpt = to_relative_path(ckpt)
         if not os.path.exists(ckpt):
+            logger.error(f"Checkpoint not found: {rel_ckpt}")
             print(f"[Error] Checkpoint not found: {ckpt}")
             continue
-        evaluate_checkpoint_file(
-            checkpoint_path=ckpt,
-            test_loader=test_loader,
-            class_names=class_names,
-            outputs_dir=outputs_dir
-        )
+        try:
+            logger.info(f"Evaluating checkpoint: {rel_ckpt}")
+            test_metrics = evaluate_checkpoint_file(
+                checkpoint_path=ckpt,
+                test_loader=test_loader,
+                class_names=class_names,
+                outputs_dir=outputs_dir
+            )
+            logger.info(
+                f"Evaluation completed for '{rel_ckpt}': "
+                f"test_loss={test_metrics['test_loss']:.4f}, test_acc={test_metrics['test_accuracy']:.2f}%"
+            )
+        except Exception as e:
+            logger.exception(f"Failed to evaluate checkpoint '{rel_ckpt}': {type(e).__name__}: {e}")
+            print(f"[Error] Failed to evaluate checkpoint '{rel_ckpt}': {e}")
 
 
 if __name__ == "__main__":

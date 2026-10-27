@@ -1,0 +1,72 @@
+{
+  "experiment_name": "densenet121_finetune",
+  "config": {
+    "name": "densenet121_finetune",
+    "model_name": "densenet121",
+    "method": "finetune",
+    "epochs": 5,
+    "batch_size": 16,
+    "learning_rate": 0.001,
+    "weight_decay": 0.0001,
+    "description": "DenseNet121 fine-tuning with denseblock4, norm5, and classifier unfrozen",
+    "optimizer": "adam",
+    "backbone_lr": 0.0001,
+    "num_classes": 10,
+    "image_size": 128,
+    "val_split": 0.1,
+    "seed": 42,
+    "device": "cuda",
+    "num_workers": 0,
+    "data_dir": "./data",
+    "checkpoints_dir": "./checkpoints",
+    "runs_dir": "./runs",
+    "outputs_dir": "./outputs",
+    "checkpoint_metric": "val_acc",
+    "group": "core"
+  },
+  "history": {
+    "train_loss": [
+      0.5911659527911081,
+      0.4271315959142314,
+      0.3607734695820345,
+      0.3249496039552821,
+      0.29120867785943877
+    ],
+    "train_acc": [
+      80.06444444444445,
+      85.46444444444444,
+      87.78444444444445,
+      88.84,
+      89.93555555555555
+    ],
+    "val_loss": [
+      0.3569205532848835,
+      0.3286093450076878,
+      0.2955661424040794,
+      0.3356417701676488,
+      0.28532313336096704
+    ],
+    "val_acc": [
+      87.66,
+      88.94,
+      90.02,
+      89.28,
+      90.78
+    ],
+    "epoch_times": [
+      128.3864140510559,
+      127.98482966423035,
+      128.43370866775513,
+      127.76765465736389,
+      128.00430297851562
+    ]
+  },
+  "best_epoch": 5,
+  "best_metric": 90.78,
+  "total_time_seconds": 642.1601679325104,
+  "environment": {
+    "torch_version": "2.6.0+cu124",
+    "torchvision_version": "0.21.0+cu124",
+    "device": "cuda"
+  }
+}

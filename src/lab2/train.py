@@ -9,9 +9,11 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
+import torchvision
 
-from lab2.checkpoint import save_checkpoint
+from lab2.checkpoint import save_checkpoint, save_run_weights_and_manage_best
 from lab2.config import ExperimentConfig
+from lab2.logger import get_logger, to_relative_path
 from lab2.tensorboard_logger import TensorBoardLogger
 from lab2.utils import format_time
 
@@ -62,7 +64,9 @@ def train_one_epoch(
     dataloader: DataLoader,
     criterion: nn.Module,
     optimizer: optim.Optimizer,
-    device: torch.device
+    device: torch.device,
+    exp_name: str = "",
+    epoch: int = 1
 ) -> Tuple[float, float]:
     """
     Executes one training epoch following Slides 8 & 9.
@@ -86,6 +90,16 @@ def train_one_epoch(
         # 3. Compute loss
         loss = criterion(outputs, labels)
 
+        # Check for NaN / Inf loss
+        if torch.isnan(loss) or torch.isinf(loss):
+            logger = get_logger()
+            msg = (
+                f"Experiment '{exp_name}' encountered {loss.item()} loss "
+                f"at epoch {epoch}, batch {batch_idx}."
+            )
+            logger.error(msg)
+            raise FloatingPointError(msg)
+
         # 4. Backward pass
         loss.backward()
 
@@ -108,7 +122,9 @@ def validate(
     model: nn.Module,
     dataloader: DataLoader,
     criterion: nn.Module,
-    device: torch.device
+    device: torch.device,
+    exp_name: str = "",
+    epoch: int = 1
 ) -> Tuple[float, float]:
     """
     Executes validation loop following Slides 10 & 11.
@@ -120,12 +136,22 @@ def validate(
     total = 0
 
     with torch.no_grad():
-        for data, labels in dataloader:
+        for batch_idx, (data, labels) in enumerate(dataloader):
             data = data.to(device)
             labels = labels.to(device)
 
             outputs = model(data)
             loss = criterion(outputs, labels)
+
+            # Check for NaN / Inf loss
+            if torch.isnan(loss) or torch.isinf(loss):
+                logger = get_logger()
+                msg = (
+                    f"Experiment '{exp_name}' encountered {loss.item()} validation loss "
+                    f"at epoch {epoch}, batch {batch_idx}."
+                )
+                logger.error(msg)
+                raise FloatingPointError(msg)
 
             batch_size = data.size(0)
             running_loss += loss.item() * batch_size
@@ -149,6 +175,12 @@ def run_training(
     Runs full training and validation lifecycle across configured epochs.
     Tracks best checkpoint based on validation metric (val_acc or val_loss).
     """
+    app_logger = get_logger()
+    app_logger.info(
+        f"Starting run: experiment='{cfg.name}', model='{cfg.model_name}', method='{cfg.method}', "
+        f"seed={cfg.seed}, device='{cfg.device}', torch={torch.__version__}, torchvision={torchvision.__version__}"
+    )
+
     device = torch.device(cfg.device)
     model = model.to(device)
     criterion = nn.CrossEntropyLoss()
@@ -173,6 +205,9 @@ def run_training(
 
     best_metric = -float("inf") if cfg.checkpoint_metric == "val_acc" else float("inf")
     best_epoch = 0
+    best_val_acc = 0.0
+    best_model_state_dict: Dict[str, Any] = {k: v.cpu().clone() for k, v in model.state_dict().items()}
+    best_checkpoint_state: Dict[str, Any] = {}
 
     latest_ckpt_path = os.path.join(cfg.checkpoints_dir, f"{cfg.name}_latest.pth")
     best_ckpt_path = os.path.join(cfg.checkpoints_dir, f"{cfg.name}_best.pth")
@@ -188,8 +223,12 @@ def run_training(
     for epoch in range(1, cfg.epochs + 1):
         epoch_start = time.time()
 
-        train_loss, train_acc = train_one_epoch(model, train_loader, criterion, optimizer, device)
-        val_loss, val_acc = validate(model, val_loader, criterion, device)
+        train_loss, train_acc = train_one_epoch(
+            model, train_loader, criterion, optimizer, device, exp_name=cfg.name, epoch=epoch
+        )
+        val_loss, val_acc = validate(
+            model, val_loader, criterion, device, exp_name=cfg.name, epoch=epoch
+        )
 
         epoch_duration = time.time() - epoch_start
 
@@ -238,6 +277,11 @@ def run_training(
             "config": vars(cfg)
         }
 
+        if is_best:
+            best_model_state_dict = {k: v.cpu().clone() for k, v in model.state_dict().items()}
+            best_checkpoint_state = checkpoint_state.copy()
+            best_val_acc = val_acc
+
         save_checkpoint(
             state=checkpoint_state,
             filepath=latest_ckpt_path,
@@ -246,6 +290,12 @@ def run_training(
         )
 
         star = " * [Best]" if is_best else ""
+        app_logger.info(
+            f"Epoch [{epoch:02d}/{cfg.epochs:02d}] for '{cfg.name}': "
+            f"train_loss={train_loss:.4f}, train_acc={train_acc:.2f}%, "
+            f"val_loss={val_loss:.4f}, val_acc={val_acc:.2f}%, "
+            f"time={format_time(epoch_duration)}{star}"
+        )
         print(
             f"Epoch [{epoch:02d}/{cfg.epochs:02d}] "
             f"Time: {format_time(epoch_duration)} | "
@@ -254,6 +304,32 @@ def run_training(
         )
 
     total_time = time.time() - total_start_time
+
+    # Ensure fallback if no epoch was marked best
+    if not best_checkpoint_state:
+        best_checkpoint_state = checkpoint_state
+        best_model_state_dict = {k: v.cpu().clone() for k, v in model.state_dict().items()}
+        best_val_acc = history["val_acc"][-1] if history["val_acc"] else 0.0
+        best_epoch = cfg.epochs
+
+    # Manage run weights and best checkpoint across runs
+    effective_val_acc = best_val_acc if cfg.checkpoint_metric != "val_acc" else best_metric
+    ckpt_summary = save_run_weights_and_manage_best(
+        checkpoint_dir=cfg.checkpoints_dir,
+        exp_name=cfg.name,
+        run_best_state_dict=best_model_state_dict,
+        run_best_checkpoint_state=best_checkpoint_state,
+        run_best_val_acc=effective_val_acc,
+        run_best_epoch=best_epoch,
+        seed=cfg.seed,
+        val_split=cfg.val_split,
+        keep_latest=False
+    )
+
+    app_logger.info(
+        f"Finished run: experiment='{cfg.name}', total_time={format_time(total_time)}, "
+        f"best_epoch={best_epoch}, best_{cfg.checkpoint_metric}={best_metric:.2f}"
+    )
     print(f"\nTraining completed in {format_time(total_time)}.")
     print(f"Best checkpoint at epoch {best_epoch} with {cfg.checkpoint_metric}: {best_metric:.2f}")
     print(f"Saved: {best_ckpt_path}")
@@ -264,5 +340,7 @@ def run_training(
         "best_epoch": best_epoch,
         "best_metric": best_metric,
         "best_checkpoint_path": best_ckpt_path,
+        "weights_path": ckpt_summary["weights_path"],
+        "checkpoint_summary": ckpt_summary,
         "history": history
     }

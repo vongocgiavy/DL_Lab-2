@@ -1,0 +1,72 @@
+{
+  "experiment_name": "resnet18_finetune",
+  "config": {
+    "name": "resnet18_finetune",
+    "model_name": "resnet18",
+    "method": "finetune",
+    "epochs": 5,
+    "batch_size": 16,
+    "learning_rate": 0.001,
+    "weight_decay": 0.0001,
+    "description": "ResNet18 fine-tuning with layer4 and classification head unfrozen",
+    "optimizer": "adam",
+    "backbone_lr": 0.0001,
+    "num_classes": 10,
+    "image_size": 128,
+    "val_split": 0.1,
+    "seed": 42,
+    "device": "cuda",
+    "num_workers": 0,
+    "data_dir": "./data",
+    "checkpoints_dir": "./checkpoints",
+    "runs_dir": "./runs",
+    "outputs_dir": "./outputs",
+    "checkpoint_metric": "val_acc",
+    "group": "core"
+  },
+  "history": {
+    "train_loss": [
+      0.5617347820825047,
+      0.3873791279451715,
+      0.3247130826801062,
+      0.28192537667589884,
+      0.24875581199597152
+    ],
+    "train_acc": [
+      81.1511111111111,
+      86.97333333333333,
+      89.01333333333334,
+      90.32666666666667,
+      91.48222222222222
+    ],
+    "val_loss": [
+      0.31872326336503026,
+      0.3018075908780098,
+      0.257753413111344,
+      0.2554955852309242,
+      0.3007193324685097
+    ],
+    "val_acc": [
+      88.78,
+      89.88,
+      91.22,
+      91.68,
+      90.18
+    ],
+    "epoch_times": [
+      80.7599229812622,
+      82.37389278411865,
+      100.8382363319397,
+      91.50808954238892,
+      78.10290193557739
+    ]
+  },
+  "best_epoch": 4,
+  "best_metric": 91.68,
+  "total_time_seconds": 435.4190089702606,
+  "environment": {
+    "torch_version": "2.6.0+cu124",
+    "torchvision_version": "0.21.0+cu124",
+    "device": "cuda"
+  }
+}

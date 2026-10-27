@@ -8,6 +8,7 @@ import torch
 from torch.utils.data import DataLoader, Dataset, Subset, random_split
 from torchvision import datasets, transforms
 
+from lab2.logger import get_logger, to_relative_path
 
 CIFAR10_CLASSES: List[str] = [
     "airplane",
@@ -87,6 +88,10 @@ def load_raw_cifar10(data_dir: str = "./data", download: bool = True) -> Tuple[D
         raw_train = datasets.CIFAR10(root=data_dir, train=True, download=download, transform=None)
         raw_test = datasets.CIFAR10(root=data_dir, train=False, download=download, transform=None)
     except Exception as e:
+        logger = get_logger()
+        logger.exception(
+            f"Failed to load or download CIFAR-10 dataset in '{to_relative_path(data_dir)}': {type(e).__name__}: {e}"
+        )
         raise RuntimeError(
             f"Failed to load or download CIFAR-10 dataset in '{data_dir}'. "
             f"If offline, please ensure the dataset files are pre-downloaded. Details: {e}"
