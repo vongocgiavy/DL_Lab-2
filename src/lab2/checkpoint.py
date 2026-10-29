@@ -150,13 +150,14 @@ def save_run_weights_and_manage_best(
     run_best_epoch: int,
     seed: int,
     val_split: float,
-    keep_latest: bool = False
+    keep_latest: bool = False,
+    checkpoint_metric: str = "val_acc"
 ) -> Dict[str, Any]:
     """
     Manages weights and best checkpoint for an experiment after each run:
     1. Always saves checkpoints/<exp>_weights.pth with state_dict of best epoch in this run.
     2. Keeps best across all runs in checkpoints/<exp>_best.pth + <exp>_best_meta.json.
-    3. Replaces best only if run_best_val_acc > previous best in meta.
+    3. Replaces best if run metric improves over previous best in meta (higher val_acc or lower val_loss).
     4. Warns and preserves best if seed or val_split differs.
     5. Replaces best with warning if best.pth exists but meta is missing.
     6. Prunes old weights and .tmp files of this experiment.
@@ -205,7 +206,16 @@ def save_run_weights_and_manage_best(
 
         prev_seed = existing_meta.get("seed")
         prev_val_split = existing_meta.get("val_split")
-        prev_best_acc = existing_meta.get("best_val_acc", -float("inf"))
+        
+        # Support both val_acc (higher is better) and val_loss (lower is better)
+        if checkpoint_metric == "val_loss":
+            default_prev = float("inf")
+            prev_best_metric = existing_meta.get("best_metric", existing_meta.get("best_val_loss", default_prev))
+            is_better = run_best_val_acc < prev_best_metric
+        else:
+            default_prev = -float("inf")
+            prev_best_metric = existing_meta.get("best_metric", existing_meta.get("best_val_acc", default_prev))
+            is_better = run_best_val_acc > prev_best_metric
 
         # Check comparability
         if (prev_seed is not None and prev_seed != seed) or (prev_val_split is not None and prev_val_split != val_split):
@@ -216,15 +226,15 @@ def save_run_weights_and_manage_best(
             )
             should_update_best = False
         else:
-            if run_best_val_acc > prev_best_acc:
+            if is_better:
                 logger.info(
-                    f"New val_acc ({run_best_val_acc:.2f}%) exceeds previous best ({prev_best_acc:.2f}%). "
+                    f"New {checkpoint_metric} ({run_best_val_acc:.4f}) improved over previous best ({prev_best_metric:.4f}). "
                     f"Updating best checkpoint for '{exp_name}'."
                 )
                 should_update_best = True
             else:
                 logger.info(
-                    f"New val_acc ({run_best_val_acc:.2f}%) did not exceed previous best ({prev_best_acc:.2f}%). "
+                    f"New {checkpoint_metric} ({run_best_val_acc:.4f}) did not improve over previous best ({prev_best_metric:.4f}). "
                     f"Retaining existing best checkpoint for '{exp_name}'."
                 )
                 should_update_best = False
@@ -240,6 +250,8 @@ def save_run_weights_and_manage_best(
         new_meta = {
             "experiment_name": exp_name,
             "best_val_acc": float(run_best_val_acc),
+            "best_metric": float(run_best_val_acc),
+            "checkpoint_metric": checkpoint_metric,
             "epoch": int(run_best_epoch),
             "saved_at": datetime.now(timezone.utc).isoformat(),
             "seed": int(seed),

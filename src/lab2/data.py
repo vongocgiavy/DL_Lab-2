@@ -75,14 +75,7 @@ def load_raw_cifar10(data_dir: str = "./data", download: bool = True) -> Tuple[D
     Loads raw PIL CIFAR-10 train and test sets.
     Raises clear RuntimeError if dataset is missing and download fails.
     """
-    import ssl
     os.makedirs(data_dir, exist_ok=True)
-    # Bypass certificate expiration issue for University of Toronto servers if needed
-    original_ssl_context = ssl._create_default_https_context
-    try:
-        ssl._create_default_https_context = ssl._create_unverified_context
-    except AttributeError:
-        pass
 
     try:
         raw_train = datasets.CIFAR10(root=data_dir, train=True, download=download, transform=None)
@@ -94,13 +87,8 @@ def load_raw_cifar10(data_dir: str = "./data", download: bool = True) -> Tuple[D
         )
         raise RuntimeError(
             f"Failed to load or download CIFAR-10 dataset in '{data_dir}'. "
-            f"If offline, please ensure the dataset files are pre-downloaded. Details: {e}"
+            f"If offline or certificate verification fails, please ensure dataset files are pre-downloaded. Details: {e}"
         )
-    finally:
-        try:
-            ssl._create_default_https_context = original_ssl_context
-        except AttributeError:
-            pass
 
     return raw_train, raw_test
 

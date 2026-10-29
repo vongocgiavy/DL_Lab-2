@@ -115,6 +115,8 @@ def test_load_config_nonexistent_experiment(tmp_path):
     ("epochs", -1, "epochs must be > 0"),
     ("batch_size", 0, "batch_size must be > 0"),
     ("learning_rate", 0.0, "learning_rate must be > 0"),
+    ("weight_decay", -0.01, "weight_decay must be >= 0"),
+    ("optimizer", "rmsprop", "optimizer must be 'adam' or 'sgd'"),
     ("model_name", "alexnet", "Invalid model_name"),
     ("method", "pretrain", "Invalid method"),
     ("group", "invalid_group", "group must be 'core' or 'hparam'"),

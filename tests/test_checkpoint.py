@@ -397,3 +397,100 @@ def test_setup_logging_idempotent_and_error_traceback(tmp_path):
     assert "Test exception logging with traceback" in content
     assert "ZeroDivisionError" in content
     assert "Traceback" in content
+
+
+# -----------------------------------------------------------------------------
+# Test 9: Checkpoint management with val_loss metric (lower is better)
+# -----------------------------------------------------------------------------
+
+def test_manage_best_with_val_loss_metric(tmp_path):
+    """(9) save_run_weights_and_manage_best với val_loss: giá trị nhỏ hơn là tốt hơn."""
+    model = TinyTestModel()
+    with torch.no_grad():
+        model.fc.weight.fill_(1.0)
+    state1 = model.state_dict()
+    ckpt1 = {"epoch": 1, "model_state_dict": state1, "val_loss": 0.8}
+
+    # Run 1: val_loss = 0.8
+    res1 = save_run_weights_and_manage_best(
+        checkpoint_dir=str(tmp_path),
+        exp_name="exp_loss",
+        run_best_state_dict=state1,
+        run_best_checkpoint_state=ckpt1,
+        run_best_val_acc=0.8,
+        run_best_epoch=1,
+        seed=42,
+        val_split=0.1,
+        checkpoint_metric="val_loss"
+    )
+    assert res1["best_updated"] is True
+
+    # Run 2: val_loss = 0.4 (lower -> better -> should update best)
+    with torch.no_grad():
+        model.fc.weight.fill_(2.0)
+    state2 = model.state_dict()
+    ckpt2 = {"epoch": 2, "model_state_dict": state2, "val_loss": 0.4}
+
+    res2 = save_run_weights_and_manage_best(
+        checkpoint_dir=str(tmp_path),
+        exp_name="exp_loss",
+        run_best_state_dict=state2,
+        run_best_checkpoint_state=ckpt2,
+        run_best_val_acc=0.4,
+        run_best_epoch=2,
+        seed=42,
+        val_split=0.1,
+        checkpoint_metric="val_loss"
+    )
+    assert res2["best_updated"] is True
+
+    # Run 3: val_loss = 0.9 (higher -> worse -> should NOT update best)
+    with torch.no_grad():
+        model.fc.weight.fill_(3.0)
+    state3 = model.state_dict()
+    ckpt3 = {"epoch": 3, "model_state_dict": state3, "val_loss": 0.9}
+
+    res3 = save_run_weights_and_manage_best(
+        checkpoint_dir=str(tmp_path),
+        exp_name="exp_loss",
+        run_best_state_dict=state3,
+        run_best_checkpoint_state=ckpt3,
+        run_best_val_acc=0.9,
+        run_best_epoch=3,
+        seed=42,
+        val_split=0.1,
+        checkpoint_metric="val_loss"
+    )
+    assert res3["best_updated"] is False
+
+    # Best file must still hold state2 (fill 2.0)
+    best_loaded = torch.load(tmp_path / "exp_loss_best.pth", map_location="cpu")
+    assert torch.allclose(best_loaded["model_state_dict"]["fc.weight"], torch.tensor(2.0))
+
+
+# -----------------------------------------------------------------------------
+# Test 10: Best checkpoint state dictionary deep snapshot isolation
+# -----------------------------------------------------------------------------
+
+def test_best_checkpoint_state_is_deep_independent_snapshot(tmp_path):
+    """(10) Trọng số trong best_checkpoint_state được sao chép độc lập, không bị thay đổi khi model tiếp tục cập nhật."""
+    import copy
+    model = TinyTestModel()
+    with torch.no_grad():
+        model.fc.weight.fill_(5.0)
+
+    # Snapshot created as in train.py
+    best_checkpoint_state = {
+        "epoch": 1,
+        "model_state_dict": {k: v.cpu().clone() for k, v in model.state_dict().items()},
+        "val_acc": 90.0
+    }
+
+    # Subsequent training modifies model in-place
+    with torch.no_grad():
+        model.fc.weight.fill_(99.0)
+
+    # Stored snapshot MUST remain unchanged at 5.0
+    assert torch.allclose(best_checkpoint_state["model_state_dict"]["fc.weight"], torch.tensor(5.0))
+    assert not torch.allclose(best_checkpoint_state["model_state_dict"]["fc.weight"], model.fc.weight)
+

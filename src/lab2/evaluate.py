@@ -43,6 +43,13 @@ def evaluate_model(
             outputs = model(data)
             loss = criterion(outputs, labels)
 
+            # Check for NaN / Inf loss
+            if torch.isnan(loss) or torch.isinf(loss):
+                logger = get_logger()
+                msg = f"Evaluation encountered {loss.item()} loss on batch."
+                logger.error(msg)
+                raise FloatingPointError(msg)
+
             batch_size = data.size(0)
             running_loss += loss.item() * batch_size
             _, predicted = outputs.max(1)

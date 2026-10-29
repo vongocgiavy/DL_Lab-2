@@ -3,6 +3,7 @@ Configuration loader and validator for Lab 2 experiments.
 """
 
 from dataclasses import dataclass, field
+import math
 import os
 from typing import Dict, List, Optional
 import yaml
@@ -49,9 +50,13 @@ class ExperimentConfig:
             raise ValueError(f"epochs must be > 0, got {self.epochs}")
         if self.batch_size <= 0:
             raise ValueError(f"batch_size must be > 0, got {self.batch_size}")
-        if self.learning_rate <= 0:
+        if self.learning_rate <= 0 or not math.isfinite(self.learning_rate):
             raise ValueError(f"learning_rate must be > 0, got {self.learning_rate}")
-        if self.backbone_lr is not None and self.backbone_lr <= 0:
+        if self.weight_decay < 0 or not math.isfinite(self.weight_decay):
+            raise ValueError(f"weight_decay must be >= 0, got {self.weight_decay}")
+        if self.optimizer.lower() not in ["adam", "sgd"]:
+            raise ValueError(f"optimizer must be 'adam' or 'sgd', got '{self.optimizer}'")
+        if self.backbone_lr is not None and (self.backbone_lr <= 0 or not math.isfinite(self.backbone_lr)):
             raise ValueError(f"backbone_lr must be > 0, got {self.backbone_lr}")
         if not (0.0 < self.val_split < 0.5):
             raise ValueError(f"val_split must be between 0.0 and 0.5, got {self.val_split}")

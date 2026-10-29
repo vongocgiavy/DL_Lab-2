@@ -2,6 +2,7 @@
 Training and validation loop orchestration following Chapter 3 slides.
 """
 
+import copy
 import os
 import time
 from typing import Any, Dict, List, Optional, Tuple
@@ -279,7 +280,21 @@ def run_training(
 
         if is_best:
             best_model_state_dict = {k: v.cpu().clone() for k, v in model.state_dict().items()}
-            best_checkpoint_state = checkpoint_state.copy()
+            best_checkpoint_state = {
+                "epoch": epoch,
+                "experiment_name": cfg.name,
+                "model_name": cfg.model_name,
+                "method": cfg.method,
+                "model_state_dict": {k: v.cpu().clone() for k, v in model.state_dict().items()},
+                "optimizer_state_dict": copy.deepcopy(optimizer.state_dict()),
+                "train_loss": train_loss,
+                "train_acc": train_acc,
+                "val_loss": val_loss,
+                "val_acc": val_acc,
+                "best_metric": best_metric,
+                "best_epoch": best_epoch,
+                "config": vars(cfg)
+            }
             best_val_acc = val_acc
 
         save_checkpoint(
@@ -307,8 +322,22 @@ def run_training(
 
     # Ensure fallback if no epoch was marked best
     if not best_checkpoint_state:
-        best_checkpoint_state = checkpoint_state
         best_model_state_dict = {k: v.cpu().clone() for k, v in model.state_dict().items()}
+        best_checkpoint_state = {
+            "epoch": cfg.epochs,
+            "experiment_name": cfg.name,
+            "model_name": cfg.model_name,
+            "method": cfg.method,
+            "model_state_dict": {k: v.cpu().clone() for k, v in model.state_dict().items()},
+            "optimizer_state_dict": copy.deepcopy(optimizer.state_dict()),
+            "train_loss": history["train_loss"][-1] if history["train_loss"] else 0.0,
+            "train_acc": history["train_acc"][-1] if history["train_acc"] else 0.0,
+            "val_loss": history["val_loss"][-1] if history["val_loss"] else 0.0,
+            "val_acc": history["val_acc"][-1] if history["val_acc"] else 0.0,
+            "best_metric": best_metric,
+            "best_epoch": cfg.epochs,
+            "config": vars(cfg)
+        }
         best_val_acc = history["val_acc"][-1] if history["val_acc"] else 0.0
         best_epoch = cfg.epochs
 
@@ -323,7 +352,8 @@ def run_training(
         run_best_epoch=best_epoch,
         seed=cfg.seed,
         val_split=cfg.val_split,
-        keep_latest=False
+        keep_latest=False,
+        checkpoint_metric=cfg.checkpoint_metric
     )
 
     app_logger.info(
