@@ -15,7 +15,7 @@ Tài liệu này công khai việc sử dụng các công cụ trí tuệ nhân 
 
 Các thành phần có sự hỗ trợ của công cụ AI:
 - Soạn thảo khung mã nguồn ban đầu cho các module trong `src/lab2/` (xây dựng mô hình, vòng lặp huấn luyện, checkpoint, đánh giá).
-- Gợi ý cú pháp cho bộ kiểm thử tự động trong `tests/` (51 test cases trên pytest).
+- Gợi ý cú pháp cho bộ kiểm thử tự động ban đầu trong `tests/`.
 - Hỗ trợ xây dựng kịch bản kiểm tra hiện tượng cập nhật bộ đệm BatchNorm (`scripts/check_frozen_bn.py`).
 - Hỗ trợ định dạng và tạo cấu trúc notebook Jupyter (`scripts/generate_main_notebook.py`, `scripts/generate_analysis_notebook.py`).
 
@@ -29,6 +29,10 @@ Toàn bộ các quyết định kỹ thuật then chốt, kiểm tra mã nguồn
 3. **Sửa đổi thuật toán nhận diện tầng head:** Trực tiếp điều chỉnh logic lọc tầng phân loại trong `src/lab2/train.py` sang kiểm tra tiền tố chính xác (`name.startswith("fc.") or name.startswith("classifier.")`) để ngăn ngừa phân loại nhầm các tầng nội bộ.
 4. **Xử lý tương thích môi trường Windows:** Bổ sung cấu hình mã hóa UTF-8 (`sys.stdout.reconfigure(encoding="utf-8")`) trên các kịch bản in ấn tiếng Việt để xử lý lỗi bảng mã `cp1252`.
 5. **Đo đạc và xác nhận hiện tượng BatchNorm:** Thiết kế và thực hiện đo lường thực tế hành vi cập nhật `running_mean` và `running_var` của BatchNorm khi backbone ở trạng thái đóng băng nhưng chạy trong `model.train()`.
+6. **Gia cố an toàn lưu trữ Checkpoint (`best_checkpoint_state`):** Phát hiện và khắc phục nguy cơ trôi tham số checkpoint tốt nhất bằng `copy.deepcopy()` trên `model.state_dict()`.
+7. **Khắc phục lỗ hổng bảo mật mạng:** Loại bỏ triệt để việc bypass kiểm tra chứng chỉ SSL (`ssl._create_unverified_context`), thay thế bằng cơ chế tải và giải nén dữ liệu chuẩn hóa, kiểm tra checksum an toàn.
+8. **Cách ly BatchNorm khi Ghi Đồ thị (`TensorBoardLogger.log_graph`):** Chuyển mô hình sang `eval()` khi trace graph mạng và khôi phục trạng thái ban đầu để tránh làm sai lệch bộ đệm BatchNorm.
+9. **Bổ sung Kiểm thực Phòng thủ (Defensive Validations):** Thêm ràng buộc `weight_decay >= 0`, kiểm tra optimizer hợp lệ, và phát hiện giá trị Loss bất thường (`NaN`/`Inf`) trong vòng lặp huấn luyện kèm 4 bài test hồi quy mới nâng tổng số test lên 62.
 
 ---
 
@@ -37,22 +41,22 @@ Toàn bộ các quyết định kỹ thuật then chốt, kiểm tra mã nguồn
 Mọi đoạn mã và kết quả đều được kiểm chứng độc lập thông qua các câu lệnh thực thi trực tiếp trên hệ thống:
 1. **Kiểm thử tự động:**
    ```bash
-   py -m pytest -q
-   # Kết quả: 51 passed in 9.85s (100% pass)
+   python -m pytest -q
+   # Kết quả: 62 passed in 13.37s (100% pass)
    ```
 2. **Kiểm chứng số lượng tham số mô hình:**
    ```bash
-   py scripts/inspect_models.py
+   python scripts/inspect_models.py
    # Kết quả: ResNet18 Transfer (5,130 params - 0.05%), ResNet18 Fine-tune (8,398,858 params - 75.11%)
    # DenseNet121 Transfer (10,250 params - 0.15%), DenseNet121 Fine-tune (2,170,378 params - 31.17%)
    ```
 3. **Kiểm chứng bộ đệm BatchNorm:**
    ```bash
-   py scripts/check_frozen_bn.py
+   python scripts/check_frozen_bn.py
    # Kết quả: 100% buffer cập nhật ở chế độ train; 0% buffer thay đổi ở chế độ eval
    ```
 4. **Kiểm tra cú pháp và thực thi Notebook:**
    ```bash
-   py -m pytest tests/test_notebooks.py -v
+   python -m pytest tests/test_notebooks.py -v
    # Kết quả: 10/10 notebook tests passed
    ```

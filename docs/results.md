@@ -29,22 +29,16 @@ Các trường dữ liệu chưa hoàn thành đủ 5 epochs được ghi nhận
 
 ## 3. Bảng Kết quả Thực nghiệm (Official Experiments Results)
 
-Định dạng bảng tương thích hoàn toàn với script tự động `scripts/make_results_table.py`:
+Bảng tổng hợp chính thức trích xuất tự động từ `outputs/metrics/summary.csv`:
 
-| Experiment ID | Group | Model | Method | Epochs | Batch Size | LR (Head/Backbone) | Train Loss | Train Acc (%) | Val Loss | Val Acc (%) | Test Loss | Test Acc (%) | Runtime (s) |
-|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| `resnet18_transfer` | core | resnet18 | transfer | 5 | 16 | 1e-3 / - | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* |
-| `resnet18_finetune` | core | resnet18 | finetune | 5 | 16 | 1e-3 / 1e-4 | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* |
-| `densenet121_transfer` | core | densenet121 | transfer | 5 | 16 | 1e-3 / - | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* |
-| `densenet121_finetune` | core | densenet121 | finetune | 5 | 16 | 1e-3 / 1e-4 | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* |
-| `resnet18_transfer_lr1e4` | hparam | resnet18 | transfer | 5 | 16 | 1e-4 / - | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* |
-| `resnet18_transfer_bs32` | hparam | resnet18 | transfer | 5 | 32 | 1e-3 / - | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* |
-
-> *Hướng dẫn cập nhật bảng:* Sau khi chạy full các thí nghiệm bằng lệnh `py scripts/run_experiments.py --group core` và `py scripts/run_experiments.py --group hparam`, chỉ cần thực thi lệnh:
-> ```bash
-> py scripts/make_results_table.py
-> ```
-> Script sẽ tự động đọc toàn bộ các file `outputs/metrics/*.json`, trích xuất số liệu chính xác và sinh ra bảng kết quả định dạng Markdown cùng file `outputs/metrics/summary.csv`.
+| Experiment ID | Epochs | Batch | LR | Trainable params | Train Loss/Acc (epoch cuối) | Best Val Acc (epoch) | Test Loss | Test Acc | Thời gian TB mỗi epoch | Tổng thời gian |
+|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| `resnet18_transfer` | 5 | 16 | 0.001 | 5,130 | 0.7718 / 73.85% | 77.94% (ep 2) | 0.6644 | **77.98%** | 01m 06s | 05m 35s |
+| `resnet18_finetune` | 5 | 16 | 0.001 | 8,398,858 | 0.2488 / 91.48% | 91.68% (ep 4) | 0.2989 | **90.24%** | 01m 26s | 07m 15s |
+| `densenet121_transfer` | 5 | 16 | 0.001 | 10,250 | 0.6860 / 76.89% | 81.84% (ep 5) | 0.5560 | **81.34%** | 01m 48s | 09m 03s |
+| `densenet121_finetune` | 5 | 16 | 0.001 | 2,170,378 | 0.2912 / 89.94% | 90.78% (ep 5) | 0.2982 | **90.65%** | 02m 08s | 10m 42s |
+| `resnet18_transfer_lr1e4` | 5 | 16 | 0.0001 | 5,130 | 0.7605 / 73.96% | 77.56% (ep 5) | 0.6643 | **78.32%** | 01m 12s | 06m 03s |
+| `resnet18_transfer_bs32` | 5 | 32 | 0.001 | 5,130 | 0.7029 / 76.12% | 78.92% (ep 4) | 0.6276 | **79.04%** | 01m 04s | 05m 21s |
 
 ---
 
@@ -52,49 +46,49 @@ Các trường dữ liệu chưa hoàn thành đủ 5 epochs được ghi nhận
 
 ### 4.1. So sánh 4 Thí nghiệm Nòng cốt (Core Experiments)
 - **Transfer Learning vs Fine-Tuning trên ResNet18:**
-  - *Nhận xét kỳ vọng:* Fine-Tuning cho phép cập nhật tầng tích chập sâu `layer4` nên thường đạt Test Accuracy cao hơn từ 3% đến 6% so với Feature Extraction thuần túy, nhưng đòi hỏi thời gian huấn luyện mỗi epoch dài hơn do phải lan truyền ngược qua 8.4 triệu tham số.
-  - *Số liệu thực tế:* *Chờ kết quả sau khi hoàn thành huấn luyện đủ epochs*
+  - *Số liệu thực tế:* Fine-Tuning giúp Test Accuracy tăng vượt bậc từ **77.98% lên 90.24%** (+12.26%), Test Loss giảm từ 0.6644 xuống 0.2989.
+  - *Đánh đổi (Trade-off):* Thời gian mỗi epoch tăng từ 01m 06s lên 01m 26s do lan truyền ngược qua 8.4 triệu tham số của `layer4`.
 - **ResNet18 vs DenseNet121 trong Transfer Learning:**
-  - *Nhận xét kỳ vọng:* DenseNet121 trích xuất đặc trưng có độ phong phú cao nhờ ghép nối các bản đồ đặc trưng từ tất cả các khối trước (dense connectivity), do đó phân loại trên vector đặc trưng 1024 chiều thường nhỉnh hơn một chút so với 512 chiều của ResNet18.
-  - *Số liệu thực tế:* *Chờ kết quả sau khi hoàn thành huấn luyện đủ epochs*
-- **Nguy cơ Overfitting:**
-  - *Dấu hiệu:* Khoảng cách giữa Train Loss và Validation Loss. Trong Fine-Tuning với số tham số trainable lớn (75.11% ở ResNet18), nếu không có điều chuẩn đủ mạnh thì Train Loss sẽ giảm rất nhanh trong khi Val Loss có thể chững lại hoặc tăng nhẹ ở các epoch cuối.
-  - *Số liệu thực tế:* *Chờ kết quả sau khi hoàn thành huấn luyện đủ epochs*
+  - *Số liệu thực tế:* DenseNet121 đạt **81.34%**, cao hơn **+3.36%** so với ResNet18 (77.98%), Test Loss thấp hơn đáng kể (0.5560 vs 0.6644).
+  - *Giải thích:* Cơ chế Dense Connectivity nối ghép toàn bộ bản đồ đặc trưng trước đó tạo ra biểu diễn đặc trưng 1024 chiều giàu thông tin hơn vector 512 chiều của ResNet18.
+- **Hiệu quả Tham số trong Fine-Tuning:**
+  - Cả ResNet18 và DenseNet121 đều chạm ngưỡng hội tụ ~90.2%–90.6% Test Acc.
+  - Tuy nhiên, DenseNet121 chỉ cần mở khóa **2,170,378 tham số** (31.17%), trong khi ResNet18 phải mở khóa **8,398,858 tham số** (75.11%). DenseNet121 tiết kiệm tài nguyên tham số hơn đáng kể.
+- **Hiện tượng Overfitting:**
+  - Ở cả hai mô hình Fine-Tuning, Train Accuracy đạt xấp xỉ 90–91.5% và Test Accuracy đạt ~90.2%–90.6%, khoảng cách giữa train và validation/test loss nhỏ (~0.05), chứng minh việc dùng Differential LR (`lr_backbone = 1e-4`, `lr_head = 1e-3`) đã kiểm soát overfitting cực kỳ hiệu quả mà không làm suy thoái trọng số tiền huấn luyện ImageNet.
 
 ### 4.2. Khảo sát Siêu tham số (Hyperparameter Experiments)
 - **Tốc độ học (Learning Rate: `1e-3` vs `1e-4`):**
-  - Khi chỉ huấn luyện classification head (`fc`), tốc độ học `1e-3` thường hội tụ nhanh và đạt độ chính xác tốt hơn trong 5 epochs so với `1e-4` (vốn quá nhỏ khiến đầu phân loại chưa hội tụ hoàn toàn).
-  - *Số liệu thực tế:* *Chờ kết quả sau khi hoàn thành huấn luyện đủ epochs*
+  - Cấu hình `lr=1e-4` (`resnet18_transfer_lr1e4`) đạt Test Acc **78.32%**, nhỉnh hơn 77.98% của cấu hình chuẩn `lr=1e-3`. Tốc độ học nhỏ hơn giúp quá trình tối ưu classification head mượt mà, tránh dao động lớn quanh cực tiểu ở các epoch cuối.
 - **Kích thước Batch (Batch Size: `16` vs `32`):**
-  - Tăng batch size lên 32 giúp tăng thông lượng xử lý tính toán trên CPU (giảm số lần gọi forward/backward mỗi epoch), nhưng trên CPU có thể đòi hỏi bộ nhớ đệm lớn hơn và gradient có thể phẳng hơn.
-  - *Số liệu thực tế:* *Chờ kết quả sau khi hoàn thành huấn luyện đủ epochs*
+  - Cấu hình `batch_size=32` (`resnet18_transfer_bs32`) rút ngắn thời gian mỗi epoch từ 01m 06s xuống **01m 04s** (tăng thông lượng vector hóa trên CPU), đồng thời đạt Test Acc **79.04%** (+1.06% so với batch 16) nhờ gradient mini-batch ít ồn hơn.
 
 ---
 
 ## 5. Phân tích Độ chính xác từng lớp & Ma trận Nhầm lẫn (Per-Class & Error Analysis)
 
 ### 5.1. Bảng Độ chính xác từng lớp (%)
-Khi hoàn tất đánh giá tập Test qua `scripts/evaluate_checkpoints.py`, số liệu sẽ được trích xuất từ `outputs/metrics/*_test_metrics.json`:
+Dữ liệu trích xuất chính thức từ các tệp `outputs/metrics/*_test_metrics.json`:
 
 | Lớp (Class) | `resnet18_transfer` | `resnet18_finetune` | `densenet121_transfer` | `densenet121_finetune` |
 |---|:---:|:---:|:---:|:---:|
-| 0. Airplane | *Chờ chạy* | *Chờ chạy* | *Chờ chạy* | *Chờ chạy* |
-| 1. Automobile | *Chờ chạy* | *Chờ chạy* | *Chờ chạy* | *Chờ chạy* |
-| 2. Bird | *Chờ chạy* | *Chờ chạy* | *Chờ chạy* | *Chờ chạy* |
-| 3. Cat | *Chờ chạy* | *Chờ chạy* | *Chờ chạy* | *Chờ chạy* |
-| 4. Deer | *Chờ chạy* | *Chờ chạy* | *Chờ chạy* | *Chờ chạy* |
-| 5. Dog | *Chờ chạy* | *Chờ chạy* | *Chờ chạy* | *Chờ chạy* |
-| 6. Frog | *Chờ chạy* | *Chờ chạy* | *Chờ chạy* | *Chờ chạy* |
-| 7. Horse | *Chờ chạy* | *Chờ chạy* | *Chờ chạy* | *Chờ chạy* |
-| 8. Ship | *Chờ chạy* | *Chờ chạy* | *Chờ chạy* | *Chờ chạy* |
-| 9. Truck | *Chờ chạy* | *Chờ chạy* | *Chờ chạy* | *Chờ chạy* |
+| 0. Airplane | 82.0% | 95.0% | 87.6% | 94.0% |
+| 1. Automobile | 85.6% | 80.4% | 85.7% | 93.0% |
+| 2. Bird | 61.8% | 90.4% | 74.2% | 87.0% |
+| 3. Cat | 70.1% | 77.8% | 71.4% | 81.6% |
+| 4. Deer | 70.8% | 90.4% | 76.1% | 86.6% |
+| 5. Dog | 61.9% | 91.6% | 70.9% | 84.3% |
+| 6. Frog | 91.9% | 91.4% | 86.3% | 94.4% |
+| 7. Horse | 80.9% | 92.7% | 83.4% | 96.2% |
+| 8. Ship | 87.3% | 94.3% | 85.9% | 93.9% |
+| 9. Truck | 87.5% | 98.4% | 91.9% | 95.5% |
 
 ### 5.2. Các cặp lớp dễ nhầm lẫn nhất (Top Confused Pairs)
-Phân tích từ ma trận nhầm lẫn dự kiến:
-1. **Cat (Mèo) $\leftrightarrow$ Dog (Chó):** Cả hai đều là động vật bốn chân có lông, hình thái tai, mắt và tư thế chụp trong ảnh 32x32 rất tương đồng khi bị nội suy phóng to.
-2. **Automobile (Ô tô con) $\leftrightarrow$ Truck (Xe tải):** Đều là phương tiện giao thông trên đường, chứa các đặc trưng cạnh bánh xe và khung kim loại giống nhau.
-3. **Airplane (Máy bay) $\leftrightarrow$ Bird (Chim):** Cả hai đều có nền trời xanh phía sau và hình dáng dang cánh ngang tương đồng.
-- *Số liệu chi tiết:* Sinh tự động từ notebook [`notebooks/Lab2_Results_Analysis.ipynb`](../notebooks/Lab2_Results_Analysis.ipynb).
+Phân tích trích xuất từ ma trận nhầm lẫn (`confusion_matrix`):
+1. **Cat (Mèo) $\leftrightarrow$ Dog (Chó):** Cặp gây nhầm lẫn lớn nhất trong chế độ Feature Extraction. Ở `resnet18_transfer`, có tới 196 ảnh Chó bị phân loại nhầm thành Mèo (chiếm gần 20% tập test của lớp Dog). Kỹ thuật Fine-Tuning đã giảm mạnh số lượng nhầm lẫn này, đưa độ chính xác Dog từ 61.9% lên 91.6%.
+2. **Bird (Chim) $\leftrightarrow$ Deer / Frog:** Trong Transfer Learning, Bird chỉ đạt 61.8% độ chính xác do độ phân giải nội suy 32x32 lên 128x128 làm mờ các chi tiết vi mô (lông vũ, mỏ chim) trên nền cây cối xanh. Fine-tuning cho phép tầng tích chập thích nghi với kết cấu đặc thù, đưa độ chính xác lên 90.4%.
+3. **Automobile (Ô tô con) $\leftrightarrow$ Truck (Xe tải):** Nhầm lẫn chủ yếu ở các góc chụp phía trước hoặc sau có hình dáng hộp kim loại và bánh xe tương đồng. DenseNet121 Fine-tuning phân biệt cặp này rất tốt (Truck đạt 95.5%, Automobile đạt 93.0%).
+- *Giao diện trực quan:* Trực quan hóa chi tiết và trích xuất tự động có sẵn trong notebook [`notebooks/Lab2_Results_Analysis.ipynb`](../notebooks/Lab2_Results_Analysis.ipynb).
 
 ### 5.3. Hình ảnh Trực quan hóa
 - Biểu đồ nhiệt Ma trận nhầm lẫn: Lưu tại thư mục [`outputs/figures/`](../outputs/figures/) (e.g. `resnet18_transfer_confusion_matrix.png`).

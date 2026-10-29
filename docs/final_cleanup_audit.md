@@ -90,7 +90,7 @@
 
 | Lệnh kiểm tra | Kết quả | Trạng thái |
 |---|---|:---:|
-| `py -m pytest -q` | 51 passed trong ~10s | ✅ 100% PASS |
+| `python -m pytest -q` | 62 passed trong ~13s | ✅ 100% PASS |
 | `py -m pytest tests/test_notebooks.py -v` | 10/10 tests passed | ✅ 100% PASS |
 | Kiểm tra cú pháp schema notebook (nbformat v4) | Hợp lệ, không có lỗi cấu trúc | ✅ ĐẠT |
 | Kiểm tra thực thi code cells trong notebook | 100% code cells có execution_count hợp lệ | ✅ ĐẠT |

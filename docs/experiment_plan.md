@@ -75,7 +75,7 @@ Dự án được chia thành 2 nhóm thí nghiệm rõ ràng: Nhóm **Core** (4
 
 ## 6. Quy trình Thực thi (Execution Procedure)
 
-1. **Bước 1 — Kiểm thử tự động:** Chạy `py -m pytest -q` đảm bảo 51/51 unit & integration tests vượt qua thành công.
+1. **Bước 1 — Kiểm thử tự động:** Chạy `python -m pytest -q` đảm bảo 62/62 unit & integration tests vượt qua thành công.
 2. **Bước 2 — Smoke Test:** Chạy `py scripts/run_experiments.py --smoke-test` để kiểm tra thông suốt luồng data, forward, backward, checkpoint, TensorBoard và evaluation.
 3. **Bước 3 — Huấn luyện 4 thí nghiệm Core:**
    ```bash

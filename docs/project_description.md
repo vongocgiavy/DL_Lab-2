@@ -61,7 +61,7 @@ Trong đề cương thực hành gợi ý các kiến trúc như ResNet18, VGG16
    - Cấu trúc thư mục chuẩn mực (`src/lab2/`, `scripts/`, `configs/`, `tests/`).
    - Module nạp cấu hình, chuẩn bị dữ liệu, xây dựng mô hình, vòng lặp train/val, checkpoint, TensorBoard và đánh giá.
 2. **Bộ kiểm thử tự động (Unit & Integration Tests):**
-   - Đảm bảo 100% test pass với pytest (51/51 tests), kiểm chứng độc lập tính đóng băng/mở khóa tham số, luồng tính toán gradient, pipeline dữ liệu, checkpoint và notebook syntax.
+   - Đảm bảo 100% test pass với pytest (62/62 tests), kiểm chứng độc lập tính đóng băng/mở khóa tham số, luồng tính toán gradient, pipeline dữ liệu, checkpoint snapshot sâu và notebook syntax.
 3. **Checkpoints & Logs:**
    - Các file checkpoint tốt nhất (`*_best.pth`) và mới nhất (`*_latest.pth`).
    - TensorBoard tfevent logs theo dõi đường cong Loss và Accuracy.

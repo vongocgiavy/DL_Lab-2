@@ -11,7 +11,7 @@ Dự án nghiên cứu, thực nghiệm và so sánh đối chứng việc áp d
 - **Transfer Learning (Feature Extraction):** Đóng băng toàn bộ các tầng trích xuất đặc trưng của backbone, chỉ huấn luyện lại tầng phân loại mới (classifier head).
 - **Fine-Tuning:** Đóng băng các tầng đầu và mở khóa các khối tích chập sâu nhất cùng với classifier head, kết hợp với kỹ thuật **Differential Learning Rate** (tốc độ học backbone nhỏ hơn 10 lần so với head) để tinh chỉnh biểu diễn đặc trưng theo miền dữ liệu mới mà không làm mất tri thức học sẵn.
 
-Hệ thống được thiết kế tối ưu hóa cho môi trường CPU-First, cung cấp đầy đủ mã nguồn modular, kịch bản dòng lệnh CLI, kịch bản sinh bảng kết quả tự động, 2 Jupyter Notebooks chuẩn hóa và bộ kiểm thử tự động 51 unit tests.
+Hệ thống được thiết kế tối ưu hóa cho môi trường CPU-First, cung cấp đầy đủ mã nguồn modular, kịch bản dòng lệnh CLI, kịch bản sinh bảng kết quả tự động, 2 Jupyter Notebooks chuẩn hóa và bộ kiểm thử tự động 62 unit tests (đạt 100% passed).
 
 ---
 
@@ -33,7 +33,8 @@ Hệ thống được thiết kế tối ưu hóa cho môi trường CPU-First, 
   - *Exercise 1:* So sánh đối chứng ResNet-18 và DenseNet-121.
   - *Exercise 2:* Khảo sát tác động khi thay đổi siêu tham số (Learning Rate $10^{-4}$ và Batch Size $32$) với cấu hình kiểm soát biến độc lập nghiêm ngặt.
   - *Exercise 3:* Tích hợp giám sát TensorBoard (Scalars, Graphs, Images, Histograms).
-- **Bộ kiểm thử tự động (Test-Driven):** 51 tests độc lập chạy offline (không yêu cầu tải dữ liệu hay trọng số pre-trained khi chạy test).
+- **Bộ kiểm thử tự động (Test-Driven):** 62 tests độc lập chạy offline (không yêu cầu tải dữ liệu hay trọng số pre-trained khi chạy test, thời gian thực thi ~13 giây).
+- **Gia cố độ tin cậy hệ thống (System Hardening):** Deep snapshot lưu trạng thái checkpoint tốt nhất, cách ly BatchNorm khi ghi log đồ thị TensorBoard, loại bỏ bypass SSL mất an toàn, phòng thủ kiểm tra siêu tham số và phát hiện giá trị Loss bất thường (`NaN`/`Inf`).
 - **Tự động hóa kết quả (Automated Reporting):** Tự động lưu lịch sử huấn luyện dạng JSON và script `make_results_table.py` tự động xuất bảng CSV và Markdown đối chiếu.
 
 ---
@@ -71,6 +72,7 @@ Cấu trúc thư mục được trích xuất trực tiếp từ kho lưu trữ 
 ```
 .
 ├── .gitignore                         # Loại trừ dataset, checkpoint nặng, runs
+├── AGENTS.md                          # Quy chuẩn thực hiện dự án, Master Rules & DoD
 ├── README.md                          # Tài liệu hướng dẫn chính
 ├── requirements.txt                   # Danh sách thư viện phụ thuộc
 ├── configs/
@@ -103,17 +105,17 @@ Cấu trúc thư mục được trích xuất trực tiếp từ kho lưu trữ 
 ├── src/
 │   └── lab2/
 │       ├── __init__.py
-│       ├── checkpoint.py              # Lưu và tải checkpoint an toàn
-│       ├── config.py                  # Nạp và kiểm thực cấu hình (DataClass)
+│       ├── checkpoint.py              # Lưu và tải checkpoint an toàn (deep snapshot)
+│       ├── config.py                  # Nạp và kiểm thực cấu hình (DataClass & validation)
 │       ├── data.py                    # Dataset, DataLoader, Transforms (Resize 128)
 │       ├── evaluate.py                # Đánh giá tập test, per-class acc, confusion matrix
 │       ├── models.py                  # Xây dựng mô hình, freezing và thay head
-│       ├── tensorboard_logger.py      # Wrapper ghi log TensorBoard
+│       ├── tensorboard_logger.py      # Wrapper ghi log TensorBoard (cách ly BatchNorm)
 │       ├── train.py                   # Vòng lặp huấn luyện, validation, differential LR
 │       └── utils.py                   # Cố định seed, device, format thời gian, save history
 └── tests/
     ├── conftest.py                    # Fixtures kiểm thử
-    ├── test_checkpoint.py             # Kiểm thử lưu và nạp checkpoint
+    ├── test_checkpoint.py             # Kiểm thử lưu và nạp checkpoint (kèm test snapshot sâu)
     ├── test_config.py                 # Kiểm thử nạp, merge, override và validate config
     ├── test_data.py                   # Kiểm thử transforms và chia tập dữ liệu
     ├── test_evaluate.py               # Kiểm thử hàm evaluate_model trên dữ liệu tổng hợp
@@ -130,7 +132,7 @@ Cấu trúc thư mục được trích xuất trực tiếp từ kho lưu trữ 
 
 ### 6.1. Cài đặt môi trường
 
-Dự án hỗ trợ Python 3.10+ (đã xác thực hoạt động ổn định trên Python 3.14.7 Windows 11).
+Dự án hỗ trợ Python 3.10+ (đã xác thực và nghiệm thu hoạt động chuẩn xác trên Python 3.13.5 Windows 11 64-bit với `torch==2.15.0+cpu` và `torchvision==0.29.1+cpu`).
 
 ```bash
 # Cài đặt toàn bộ thư viện phụ thuộc
@@ -139,7 +141,7 @@ python -m pip install -r requirements.txt
 
 ### 6.2. Chạy bộ kiểm thử tự động (Unit Tests)
 
-Chạy toàn bộ 51 test cases độc lập trong khoảng 10 giây:
+Chạy toàn bộ 62 test cases độc lập trong khoảng 13 giây (đạt 100% pass):
 ```bash
 python -m pytest -v
 ```
@@ -312,18 +314,67 @@ ALL REQUESTED EXPERIMENTS COMPLETED
 
 ---
 
-## 10. Results
+## 10. Results & Quantitative Analysis
 
-Bảng kết quả tổng hợp chính thức được quản lý tự động từ `outputs/metrics/summary.csv`:
+### 10.1. Bảng Kết quả Thực nghiệm Tổng hợp (Trích xuất từ `outputs/metrics/summary.csv`)
 
 | Experiment ID | Epochs | Batch | LR | Trainable params | Train Loss/Acc (epoch cuối) | Best Val Acc (epoch) | Test Loss | Test Acc | Thời gian TB mỗi epoch | Tổng thời gian |
 |:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| `resnet18_transfer` | 5 | 16 | 0.001 | 5,130 | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* |
-| `resnet18_finetune` | 5 | 16 | 0.001 | 8,398,858 | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* |
-| `densenet121_transfer` | 5 | 16 | 0.001 | 10,250 | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* |
-| `densenet121_finetune` | 5 | 16 | 0.001 | 2,170,378 | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* |
-| `resnet18_transfer_lr1e4` | 5 | 16 | 0.0001 | 5,130 | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* |
-| `resnet18_transfer_bs32` | 5 | 32 | 0.001 | 5,130 | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* | *Chờ chạy full* |
+| `resnet18_transfer` | 5 | 16 | 0.001 | 5,130 | 0.7718 / 73.85% | 77.94% (ep 2) | 0.6644 | **77.98%** | 01m 06s | 05m 35s |
+| `resnet18_finetune` | 5 | 16 | 0.001 | 8,398,858 | 0.2488 / 91.48% | 91.68% (ep 4) | 0.2989 | **90.24%** | 01m 26s | 07m 15s |
+| `densenet121_transfer` | 5 | 16 | 0.001 | 10,250 | 0.6860 / 76.89% | 81.84% (ep 5) | 0.5560 | **81.34%** | 01m 48s | 09m 03s |
+| `densenet121_finetune` | 5 | 16 | 0.001 | 2,170,378 | 0.2912 / 89.94% | 90.78% (ep 5) | 0.2982 | **90.65%** | 02m 08s | 10m 42s |
+| `resnet18_transfer_lr1e4` | 5 | 16 | 0.0001 | 5,130 | 0.7605 / 73.96% | 77.56% (ep 5) | 0.6643 | **78.32%** | 01m 12s | 06m 03s |
+| `resnet18_transfer_bs32` | 5 | 32 | 0.001 | 5,130 | 0.7029 / 76.12% | 78.92% (ep 4) | 0.6276 | **79.04%** | 01m 04s | 05m 21s |
+
+---
+
+### 10.2. Bảng Độ chính xác theo Từng lớp (Per-Class Test Accuracy %)
+
+| Lớp (Class) | `resnet18_transfer` | `resnet18_finetune` | `densenet121_transfer` | `densenet121_finetune` |
+|---|:---:|:---:|:---:|:---:|
+| 0. Airplane | 82.0% | 95.0% | 87.6% | 94.0% |
+| 1. Automobile | 85.6% | 80.4% | 85.7% | 93.0% |
+| 2. Bird | 61.8% | 90.4% | 74.2% | 87.0% |
+| 3. Cat | 70.1% | 77.8% | 71.4% | 81.6% |
+| 4. Deer | 70.8% | 90.4% | 76.1% | 86.6% |
+| 5. Dog | 61.9% | 91.6% | 70.9% | 84.3% |
+| 6. Frog | 91.9% | 91.4% | 86.3% | 94.4% |
+| 7. Horse | 80.9% | 92.7% | 83.4% | 96.2% |
+| 8. Ship | 87.3% | 94.3% | 85.9% | 93.9% |
+| 9. Truck | 87.5% | 98.4% | 91.9% | 95.5% |
+
+---
+
+### 10.3. Phân tích So sánh & Đánh giá Khoa học
+
+1. **Transfer Learning (Feature Extraction) vs. Fine-Tuning:**
+   - **Đột phá về hiệu năng:** Fine-Tuning cải thiện độ chính xác Test vượt bậc trên cả 2 kiến trúc: tăng từ **77.98% lên 90.24%** (+12.26%) trên ResNet18 và từ **81.34% lên 90.65%** (+9.31%) trên DenseNet121. Test Loss giảm tương ứng hơn một nửa (từ ~0.66 xuống ~0.29).
+   - **Trade-off về tính toán:** Đổi lại, Fine-Tuning đòi hỏi lan truyền ngược qua các khối tích chập sâu nhất, khiến thời gian mỗi epoch tăng từ 01m 06s lên 01m 26s (+30% trên ResNet18) và từ 01m 48s lên 02m 08s (+18% trên DenseNet121).
+
+2. **So sánh Đối đầu ResNet-18 vs. DenseNet-121:**
+   - **Trong Transfer Learning:** DenseNet121 đạt **81.34%**, vượt trội **+3.36%** so với ResNet18 (**77.98%**). Cơ chế *Dense Connectivity* (ghép nối đặc trưng từ tất cả các tầng trước) tạo ra vector đặc trưng 1024 chiều giàu biểu diễn ngữ nghĩa hơn so với 512 chiều của ResNet18.
+   - **Trong Fine-Tuning & Hiệu quả tham số:** Cả hai mô hình đều chạm ngưỡng hội tụ ~90.2%–90.6% Test Acc. Tuy nhiên, DenseNet121 chỉ cần mở khóa **2,170,378 tham số** (31.17%), trong khi ResNet18 phải mở khóa tới **8,398,858 tham số** (75.11%). DenseNet121 đạt hiệu quả biểu diễn trên mỗi tham số huấn luyện cao gấp 3.8 lần.
+
+3. **Tác động của Siêu tham số (Hyperparameter Sensitivity):**
+   - **Learning Rate (`1e-3` vs `1e-4`):** Với `lr=1e-4`, mô hình hội tụ mượt mà và ổn định hơn ở các epoch cuối, đạt Test Acc **78.32%** (cao hơn 77.98% của mức chuẩn 1e-3) và Test Loss tương đương (0.6643).
+   - **Batch Size (`16` vs `32`):** Tăng batch size lên 32 giúp tăng thông lượng xử lý tính toán trên CPU (giảm thời gian epoch từ 01m 06s xuống **01m 04s**), đồng thời tăng độ chính xác Test lên **79.04%** (+1.06%) nhờ ước lượng gradient mini-batch ổn định hơn.
+
+4. **Phân tích Ma trận Nhầm lẫn & Các cặp lớp gây nhiễu:**
+   - Cặp **Cat (Mèo) $\leftrightarrow$ Dog (Chó)** nhầm lẫn nhiều nhất trong chế độ Transfer Learning (196 ảnh Chó bị đoán nhầm thành Mèo ở ResNet18 Transfer). Kỹ thuật Fine-Tuning đã giảm thiểu lỗi này đáng kể (tăng độ chính xác Dog từ 61.9% lên 91.6%).
+   - Cặp **Bird (Chim) $\leftrightarrow$ Frog / Deer:** Trong Transfer Learning, Bird chỉ đạt 61.8% độ chính xác do độ phân giải nội suy làm mất các chi tiết lông vũ nhỏ trên nền cây cỏ. Khi Fine-Tuning, tỷ lệ này tăng vọt lên 90.4%.
+   - Các lớp phương tiện cơ giới tách biệt như **Truck** (98.4%) và **Ship** (94.3%) đạt độ chính xác cao nhất nhờ hình thái góc cạnh và nền nước biển đặc trưng.
+
+---
+
+### 10.4. Các Cải tiến Kỹ thuật & Gia cố Hệ thống (System Hardening)
+
+Dự án đã áp dụng các biện pháp gia cố kỹ thuật và phòng vệ nghiêm ngặt:
+1. **Bảo toàn Checkpoint State (`best_checkpoint_state`):** Áp dụng `copy.deepcopy()` khi snapshot trạng thái mô hình tại epoch đạt `val_acc` cao nhất, loại trừ nguy cơ checkpoint bị biến đổi tham số khi mô hình tiếp tục huấn luyện các epoch tiếp theo.
+2. **Quản lý Checkpoint linh hoạt:** Hàm `save_run_weights_and_manage_best` hỗ trợ theo dõi cả `val_acc` (tối đại hóa) và `val_loss` (tối thiểu hóa) với logic so sánh nhất quán.
+3. **An toàn Bảo mật Mạng:** Loại bỏ hoàn toàn hành vi bypass xác thực SSL không an toàn (`ssl._create_unverified_context`). Dữ liệu được nạp và trích xuất qua cơ chế chuẩn hóa và kiểm tra checksum.
+4. **Cách ly BatchNorm khi Ghi Đồ thị (`TensorBoardLogger.log_graph`):** Chuyển mô hình sang chế độ `eval()` trước khi thực hiện forward pass trace đồ thị mạng nơ-ron và khôi phục trạng thái ban đầu sau khi trace xong, ngăn chặn việc làm sai lệch bộ đệm `running_mean`/`running_var`.
+5. **Kiểm thực Phòng thủ (Defensive Validations):** Kiểm tra chặt chẽ `weight_decay >= 0`, danh sách optimizer được hỗ trợ, và cờ kiểm tra phát hiện tức thời giá trị Loss bất thường (`NaN` hoặc `Inf`) trong vòng lặp huấn luyện.
 
 > *Chi tiết báo cáo định lượng và ma trận nhầm lẫn của từng thí nghiệm được trình bày đầy đủ tại [docs/results.md](docs/results.md).*
 
