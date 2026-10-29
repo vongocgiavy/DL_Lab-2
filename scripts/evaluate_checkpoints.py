@@ -33,6 +33,10 @@ def main():
     global_cfg = yaml_data.get("global", {})
     checkpoints_dir = global_cfg.get("checkpoints_dir", "./checkpoints")
     outputs_dir = global_cfg.get("outputs_dir", "./outputs")
+    if args.smoke_test:
+        outputs_dir = os.path.join(outputs_dir, "smoke")
+        os.makedirs(os.path.join(outputs_dir, "metrics"), exist_ok=True)
+        os.makedirs(os.path.join(outputs_dir, "figures"), exist_ok=True)
 
     if not args.checkpoint and not args.all:
         print("Please provide --checkpoint <path> or --all.")

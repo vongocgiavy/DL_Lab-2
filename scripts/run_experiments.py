@@ -42,6 +42,16 @@ def run_single_experiment(
 
     cfg = load_config(experiment_id=experiment_id, config_path=config_path, overrides=overrides)
 
+    # Smoke test namespace isolation: prevent polluting official checkpoints, metrics, and runs
+    if smoke_test:
+        cfg.checkpoints_dir = os.path.join(cfg.checkpoints_dir, "smoke")
+        cfg.runs_dir = os.path.join(cfg.runs_dir, "smoke")
+        cfg.outputs_dir = os.path.join(cfg.outputs_dir, "smoke")
+        os.makedirs(cfg.checkpoints_dir, exist_ok=True)
+        os.makedirs(cfg.runs_dir, exist_ok=True)
+        os.makedirs(os.path.join(cfg.outputs_dir, "metrics"), exist_ok=True)
+        os.makedirs(os.path.join(cfg.outputs_dir, "figures"), exist_ok=True)
+
     set_seed(cfg.seed)
 
     print(f"\n=======================================================")
@@ -110,6 +120,7 @@ def run_single_experiment(
 
         return {
             "experiment": cfg.name,
+            "checkpoint_metric": cfg.checkpoint_metric,
             "train_results": train_results,
             "test_metrics": test_metrics
         }
@@ -173,21 +184,38 @@ def main():
             )
             failed_experiments.append((exp_id, f"{type(e).__name__}: {e}"))
 
-    if all_results:
+    if all_results and not failed_experiments:
         print("\n" + "=" * 65)
-        print("ALL REQUESTED EXPERIMENTS COMPLETED")
+        print("ALL REQUESTED EXPERIMENTS COMPLETED SUCCESSFULLY")
         print("=" * 65)
         for r in all_results:
             exp = r["experiment"]
+            metric_name = r.get("checkpoint_metric", "val_acc")
             best_val = r["train_results"]["best_metric"]
+            metric_label = "Best Val Acc" if metric_name == "val_acc" else f"Best {metric_name.replace('_', ' ').title()}"
+            val_format = f"{best_val:.2f}%" if metric_name == "val_acc" else f"{best_val:.4f}"
             test_acc = r["test_metrics"]["test_accuracy"]
             test_loss = r["test_metrics"]["test_loss"]
-            print(f"[{exp}] Best Val Acc: {best_val:.2f}% | Test Acc: {test_acc:.2f}% | Test Loss: {test_loss:.4f}")
+            print(f"[{exp}] {metric_label}: {val_format} | Test Acc: {test_acc:.2f}% | Test Loss: {test_loss:.4f}")
+        print("=" * 65)
+    elif all_results and failed_experiments:
+        print("\n" + "=" * 65)
+        print("PARTIAL RUN COMPLETED (SOME EXPERIMENTS SUCCEEDED, SOME FAILED)")
+        print("=" * 65)
+        for r in all_results:
+            exp = r["experiment"]
+            metric_name = r.get("checkpoint_metric", "val_acc")
+            best_val = r["train_results"]["best_metric"]
+            metric_label = "Best Val Acc" if metric_name == "val_acc" else f"Best {metric_name.replace('_', ' ').title()}"
+            val_format = f"{best_val:.2f}%" if metric_name == "val_acc" else f"{best_val:.4f}"
+            test_acc = r["test_metrics"]["test_accuracy"]
+            test_loss = r["test_metrics"]["test_loss"]
+            print(f"[{exp}] {metric_label}: {val_format} | Test Acc: {test_acc:.2f}% | Test Loss: {test_loss:.4f}")
         print("=" * 65)
 
     if failed_experiments:
         print("\n" + "=" * 65)
-        print("EXPERIMENT RUN SUMMARY: SOME EXPERIMENTS FAILED")
+        print("EXPERIMENT RUN SUMMARY: FAILED EXPERIMENTS")
         print("=" * 65)
         for exp_id, err_msg in failed_experiments:
             print(f"FAILED: [{exp_id}] -> {err_msg}")

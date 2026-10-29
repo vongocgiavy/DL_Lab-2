@@ -27,7 +27,7 @@ Trong thị giác máy tính, việc huấn luyện các mạng nơ-ron tích ch
 - **Kiến trúc mô hình:**
   - `ResNet18` (Residual Networks - 18 layers).
   - `DenseNet121` (Densely Connected Convolutional Networks - 121 layers).
-- **Môi trường phần cứng:** Tối ưu hóa CPU-first (Intel Core i5-12450HX, 24 GB RAM, Windows 11).
+- **Môi trường phần cứng:** Hỗ trợ linh hoạt GPU (CUDA) và CPU. Thí nghiệm 5 epochs chính thức được thực hiện trên GPU NVIDIA hỗ trợ CUDA (PyTorch 2.6.0+cu124); môi trường xác minh và kiểm thử offline thực thi trên CPU (Intel Core i5, Windows 11).
 
 ## 4. Đối chiếu yêu cầu bài thực hành (Practice 2 Requirements Cross-Reference)
 

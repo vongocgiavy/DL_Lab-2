@@ -1,7 +1,6 @@
 # Lab 2: Pretrained Models, Transfer Learning & Fine-Tuning (CIFAR-10)
 
-
-Dự án tuân thủ các nguyên tắc kỹ thuật: **Source-First, Design-First, Test-Driven, Reproducible và CPU-First**.
+Dự án tuân thủ các nguyên tắc kỹ thuật: **Source-First, Design-First, Test-Driven, Reproducible và Hardware-Aware (GPU/CUDA + CPU)**.
 
 ---
 
@@ -11,7 +10,7 @@ Dự án nghiên cứu, thực nghiệm và so sánh đối chứng việc áp d
 - **Transfer Learning (Feature Extraction):** Đóng băng toàn bộ các tầng trích xuất đặc trưng của backbone, chỉ huấn luyện lại tầng phân loại mới (classifier head).
 - **Fine-Tuning:** Đóng băng các tầng đầu và mở khóa các khối tích chập sâu nhất cùng với classifier head, kết hợp với kỹ thuật **Differential Learning Rate** (tốc độ học backbone nhỏ hơn 10 lần so với head) để tinh chỉnh biểu diễn đặc trưng theo miền dữ liệu mới mà không làm mất tri thức học sẵn.
 
-Hệ thống được thiết kế tối ưu hóa cho môi trường CPU-First, cung cấp đầy đủ mã nguồn modular, kịch bản dòng lệnh CLI, kịch bản sinh bảng kết quả tự động, 2 Jupyter Notebooks chuẩn hóa và bộ kiểm thử tự động 62 unit tests (đạt 100% passed).
+Hệ thống hỗ trợ thực thi linh hoạt trên cả GPU (CUDA) và CPU, cung cấp đầy đủ mã nguồn modular, kịch bản dòng lệnh CLI (cơ chế cách ly namespace smoke test an toàn), kịch bản sinh bảng kết quả tự động, 2 Jupyter Notebooks chuẩn hóa và bộ kiểm thử tự động 64 unit tests (đạt 100% passed).
 
 ---
 
@@ -20,7 +19,7 @@ Hệ thống được thiết kế tối ưu hóa cho môi trường CPU-First, 
 - **Bộ dữ liệu:** CIFAR-10 gồm 60.000 ảnh màu kích thước gốc $32 \times 32$ thuộc 10 lớp phân loại (`airplane`, `automobile`, `bird`, `cat`, `deer`, `dog`, `frog`, `horse`, `ship`, `truck`).
 - **Thách thức kỹ thuật:**
   1. *Độ phân giải khác biệt:* Kích thước ảnh CIFAR-10 ($32 \times 32$) nhỏ hơn nhiều so với kích thước huấn luyện chuẩn của ImageNet ($224 \times 224$), đòi hỏi tiền xử lý nội suy (resize lên $128 \times 128$) và chuẩn hóa kênh màu.
-  2. *Ràng buộc tài nguyên tính toán:* Thực thi trên môi trường CPU (Intel Core i5, không GPU NVIDIA), đòi hỏi giải pháp tối ưu luồng dữ liệu, kích thước batch và cờ `--smoke-test` phục vụ kiểm thử nhanh pipeline.
+  2. *Môi trường tính toán và kiểm thử:* Quá trình huấn luyện 6 thí nghiệm chính thức được thực hiện trên GPU NVIDIA hỗ trợ CUDA (PyTorch 2.6.0+cu124) để tối ưu thời gian huấn luyện (khoảng 5 đến 11 phút cho mỗi thí nghiệm 5 epoch); đồng thời hệ thống được thiết kế tương thích hoàn toàn để chạy trên CPU (qua cờ `--device cpu` hoặc trong môi trường không có GPU rời), kết hợp cờ `--smoke-test` được cách ly namespace riêng biệt (`checkpoints/smoke/`, `outputs/smoke/`, `runs/smoke/`) phục vụ kiểm thử nhanh pipeline mà không gây ghi đè dữ liệu chính thức.
   3. *Hiện tượng cập nhật thống kê BatchNorm trong backbone đóng băng:* Khi gọi `model.train()`, các tầng BatchNorm dù có `requires_grad=False` vẫn cập nhật `running_mean` và `running_var` theo batch dữ liệu mới (đã được đo đạc thực nghiệm tại Phase 6).
 
 ---
@@ -33,8 +32,13 @@ Hệ thống được thiết kế tối ưu hóa cho môi trường CPU-First, 
   - *Exercise 1:* So sánh đối chứng ResNet-18 và DenseNet-121.
   - *Exercise 2:* Khảo sát tác động khi thay đổi siêu tham số (Learning Rate $10^{-4}$ và Batch Size $32$) với cấu hình kiểm soát biến độc lập nghiêm ngặt.
   - *Exercise 3:* Tích hợp giám sát TensorBoard (Scalars, Graphs, Images, Histograms).
-- **Bộ kiểm thử tự động (Test-Driven):** 62 tests độc lập chạy offline (không yêu cầu tải dữ liệu hay trọng số pre-trained khi chạy test, thời gian thực thi ~13 giây).
-- **Gia cố độ tin cậy hệ thống (System Hardening):** Deep snapshot lưu trạng thái checkpoint tốt nhất, cách ly BatchNorm khi ghi log đồ thị TensorBoard, loại bỏ bypass SSL mất an toàn, phòng thủ kiểm tra siêu tham số và phát hiện giá trị Loss bất thường (`NaN`/`Inf`).
+- **Bộ kiểm thử tự động (Test-Driven):** 64 tests độc lập chạy offline trên CPU (không yêu cầu tải dữ liệu hay trọng số pre-trained khi chạy test, thời gian thực thi ~18–35 giây).
+- **Gia cố độ tin cậy hệ thống (System Hardening):** 
+  - Tách namespace hoàn toàn cho smoke test (`checkpoints/smoke/`, `outputs/smoke/`, `runs/smoke/`).
+  - Deep snapshot lưu trạng thái checkpoint tốt nhất kèm fingerprint cấu hình và bảo toàn checkpoint khi metadata hỏng hoặc cấu hình không tương thích.
+  - Cách ly BatchNorm khi ghi log đồ thị TensorBoard.
+  - Loại bỏ bypass SSL mất an toàn.
+  - Phòng thủ kiểm tra siêu tham số và phát hiện giá trị Loss bất thường (`NaN`/`Inf`).
 - **Tự động hóa kết quả (Automated Reporting):** Tự động lưu lịch sử huấn luyện dạng JSON và script `make_results_table.py` tự động xuất bảng CSV và Markdown đối chiếu.
 
 ---
@@ -50,7 +54,7 @@ flowchart TD
     C --> E["src/lab2/train.py<br/>(6-step Training Loop & Validation)"]
     D --> E
     
-    E --> F["src/lab2/checkpoint.py<br/>(Save *_best.pth & *_latest.pth)"]
+    E --> F["src/lab2/checkpoint.py<br/>(Save *_best.pth & Weights/Meta)"]
     E --> G["src/lab2/tensorboard_logger.py<br/>(Runs TensorBoard Events)"]
     E --> H["src/lab2/utils.py<br/>(save_history_json)"]
     
@@ -71,7 +75,7 @@ Cấu trúc thư mục được trích xuất trực tiếp từ kho lưu trữ 
 
 ```
 .
-├── .gitignore                         # Loại trừ dataset, checkpoint nặng, runs
+├── .gitignore                         # Loại trừ dataset, checkpoint nặng, runs, outputs/smoke
 ├── AGENTS.md                          # Quy chuẩn thực hiện dự án, Master Rules & DoD
 ├── README.md                          # Tài liệu hướng dẫn chính
 ├── requirements.txt                   # Danh sách thư viện phụ thuộc
@@ -105,7 +109,7 @@ Cấu trúc thư mục được trích xuất trực tiếp từ kho lưu trữ 
 ├── src/
 │   └── lab2/
 │       ├── __init__.py
-│       ├── checkpoint.py              # Lưu và tải checkpoint an toàn (deep snapshot)
+│       ├── checkpoint.py              # Lưu và tải checkpoint an toàn (deep snapshot, config fingerprint)
 │       ├── config.py                  # Nạp và kiểm thực cấu hình (DataClass & validation)
 │       ├── data.py                    # Dataset, DataLoader, Transforms (Resize 128)
 │       ├── evaluate.py                # Đánh giá tập test, per-class acc, confusion matrix
@@ -115,7 +119,7 @@ Cấu trúc thư mục được trích xuất trực tiếp từ kho lưu trữ 
 │       └── utils.py                   # Cố định seed, device, format thời gian, save history
 └── tests/
     ├── conftest.py                    # Fixtures kiểm thử
-    ├── test_checkpoint.py             # Kiểm thử lưu và nạp checkpoint (kèm test snapshot sâu)
+    ├── test_checkpoint.py             # Kiểm thử lưu và nạp checkpoint (kèm snapshot sâu, metadata recovery)
     ├── test_config.py                 # Kiểm thử nạp, merge, override và validate config
     ├── test_data.py                   # Kiểm thử transforms và chia tập dữ liệu
     ├── test_evaluate.py               # Kiểm thử hàm evaluate_model trên dữ liệu tổng hợp
@@ -132,7 +136,9 @@ Cấu trúc thư mục được trích xuất trực tiếp từ kho lưu trữ 
 
 ### 6.1. Cài đặt môi trường
 
-Dự án hỗ trợ Python 3.10+ (đã xác thực và nghiệm thu hoạt động chuẩn xác trên Python 3.13.5 Windows 11 64-bit với `torch==2.15.0+cpu` và `torchvision==0.29.1+cpu`).
+Dự án hỗ trợ Python 3.10+:
+- **Môi trường thực nghiệm chính thức:** Đã huấn luyện 6 thí nghiệm 5 epoch trên GPU NVIDIA (CUDA, PyTorch `2.6.0+cu124`, torchvision `0.21.0+cu124`).
+- **Môi trường kiểm thử & xác minh cục bộ:** Đã kiểm thử và nghiệm thu hoạt động trên Windows 11 64-bit với `torch==2.15.0+cpu` và `torchvision==0.29.1+cpu`.
 
 ```bash
 # Cài đặt toàn bộ thư viện phụ thuộc
@@ -141,7 +147,7 @@ python -m pip install -r requirements.txt
 
 ### 6.2. Chạy bộ kiểm thử tự động (Unit Tests)
 
-Chạy toàn bộ 62 test cases độc lập trong khoảng 13 giây (đạt 100% pass):
+Chạy toàn bộ 64 test cases độc lập offline trên CPU (đạt 100% pass):
 ```bash
 python -m pytest -v
 ```
@@ -155,7 +161,7 @@ python scripts/inspect_models.py
 
 ### 6.4. Kiểm tra nhanh toàn bộ luồng huấn luyện (Smoke Test)
 
-Chạy thử nghiệm 1 epoch trên 120 mẫu dữ liệu để xác minh toàn bộ luồng huấn luyện, lưu checkpoint, đánh giá test và ghi log:
+Chạy thử nghiệm 1 epoch trên 120 mẫu dữ liệu để xác minh toàn bộ luồng huấn luyện, lưu checkpoint, đánh giá test và ghi log. Kết quả smoke test được ghi riêng vào `checkpoints/smoke/`, `outputs/smoke/`, `runs/smoke/`, hoàn toàn không làm ảnh hưởng đến dữ liệu chính thức:
 ```bash
 python scripts/run_experiments.py --smoke-test --experiment resnet18_transfer
 ```
@@ -240,7 +246,7 @@ Dự án cung cấp 2 file Jupyter Notebook chuẩn hóa phục vụ học tập
 
 ## 9. Example In-Out
 
-### Lệnh thực thi mẫu (Smoke Test trên CPU)
+### Lệnh thực thi mẫu (Smoke Test trên CPU với Namespace Riêng)
 ```bash
 python scripts/run_experiments.py --smoke-test --experiment resnet18_transfer
 ```
@@ -251,6 +257,7 @@ python scripts/run_experiments.py --smoke-test --experiment resnet18_transfer
 EXPERIMENT RUNNER: resnet18_transfer
 Description: ResNet18 with frozen backbone, training only classification head
 Smoke Test Mode: True
+Compute Device: cpu
 =======================================================
 Train samples: 120 | Val samples: 30 | Test samples: 30
 Model: resnet18 | Method: transfer | Trainable Params: 5,130 / 11,181,642 (0.05%)
@@ -260,63 +267,40 @@ Starting Experiment: resnet18_transfer
 Model: resnet18 | Method: transfer
 Epochs: 1 | Batch Size: 16 | Device: cpu
 ==================================================
-Epoch [01/01] Time: 00m 01s | Train Loss: 2.5788 - Acc: 11.67% | Val Loss: 2.2786 - Acc: 10.00% * [Best]
+Epoch [01/01] Time: 00m 00s | Train Loss: 2.5788 - Acc: 11.67% | Val Loss: 2.2786 - Acc: 10.00% * [Best]
 
-Training completed in 00m 01s.
+Training completed in 00m 00s.
 Best checkpoint at epoch 1 with val_acc: 10.00
-Saved: ./checkpoints/resnet18_transfer_best.pth
+Saved: ./checkpoints/smoke/resnet18_transfer_best.pth
 
-Evaluating Best Checkpoint on Unbiased Test Set: ./checkpoints/resnet18_transfer_best.pth
+Evaluating Best Checkpoint on Unbiased Test Set: ./checkpoints/smoke/resnet18_transfer_best.pth
 
 Evaluation Results for [resnet18_transfer]:
 Test Loss: 2.4466
 Test Accuracy: 10.00%
-Metrics saved to: ./outputs/metrics/resnet18_transfer_test_metrics.json
-Figure saved to: ./outputs/figures/resnet18_transfer_confusion_matrix.png
+Metrics saved to: ./outputs/smoke/metrics/resnet18_transfer_test_metrics.json
+Figure saved to: ./outputs/smoke/figures/resnet18_transfer_confusion_matrix.png
 
 =================================================================
-ALL REQUESTED EXPERIMENTS COMPLETED
+ALL REQUESTED EXPERIMENTS COMPLETED SUCCESSFULLY
 =================================================================
 [resnet18_transfer] Best Val Acc: 10.00% | Test Acc: 10.00% | Test Loss: 2.4466
 =================================================================
 ```
 
-### Danh sách tệp tin được sinh ra
-- **Checkpoint:** `checkpoints/resnet18_transfer_best.pth`
-- **History JSON:** `outputs/metrics/resnet18_transfer_history.json`
-- **Test Metrics JSON:** `outputs/metrics/resnet18_transfer_test_metrics.json`
-- **Confusion Matrix PNG:** `outputs/figures/resnet18_transfer_confusion_matrix.png`
-- **TensorBoard Event Log:** `runs/resnet18_transfer/events.out.tfevents...`
-
-### Trích đoạn nội dung file `outputs/metrics/resnet18_transfer_test_metrics.json`
-```json
-{
-  "experiment_name": "resnet18_transfer",
-  "checkpoint_path": "./checkpoints/resnet18_transfer_best.pth",
-  "best_epoch": 1,
-  "test_loss": 2.4466,
-  "test_accuracy": 10.0,
-  "total_test_samples": 30,
-  "per_class_accuracy": {
-    "airplane": 0.0,
-    "automobile": 0.0,
-    "bird": 0.0,
-    "cat": 0.0,
-    "deer": 100.0,
-    "dog": 0.0,
-    "frog": 0.0,
-    "horse": 0.0,
-    "ship": 0.0,
-    "truck": 0.0
-  }
-}
-```
+### Danh sách tệp tin được sinh ra (Namespace Smoke Test)
+- **Checkpoint:** `checkpoints/smoke/resnet18_transfer_best.pth`
+- **History JSON:** `outputs/smoke/metrics/resnet18_transfer_history.json`
+- **Test Metrics JSON:** `outputs/smoke/metrics/resnet18_transfer_test_metrics.json`
+- **Confusion Matrix PNG:** `outputs/smoke/figures/resnet18_transfer_confusion_matrix.png`
+- **TensorBoard Event Log:** `runs/smoke/resnet18_transfer/events.out.tfevents...`
 
 ---
 
 ## 10. Results & Quantitative Analysis
 
 ### 10.1. Bảng Kết quả Thực nghiệm Tổng hợp (Trích xuất từ `outputs/metrics/summary.csv`)
+*(Thực nghiệm 5 epochs trên môi trường GPU CUDA với PyTorch 2.6.0+cu124)*
 
 | Experiment ID | Epochs | Batch | LR | Trainable params | Train Loss/Acc (epoch cuối) | Best Val Acc (epoch) | Test Loss | Test Acc | Thời gian TB mỗi epoch | Tổng thời gian |
 |:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
@@ -350,42 +334,44 @@ ALL REQUESTED EXPERIMENTS COMPLETED
 
 1. **Transfer Learning (Feature Extraction) vs. Fine-Tuning:**
    - **Đột phá về hiệu năng:** Fine-Tuning cải thiện độ chính xác Test vượt bậc trên cả 2 kiến trúc: tăng từ **77.98% lên 90.24%** (+12.26%) trên ResNet18 và từ **81.34% lên 90.65%** (+9.31%) trên DenseNet121. Test Loss giảm tương ứng hơn một nửa (từ ~0.66 xuống ~0.29).
-   - **Trade-off về tính toán:** Đổi lại, Fine-Tuning đòi hỏi lan truyền ngược qua các khối tích chập sâu nhất, khiến thời gian mỗi epoch tăng từ 01m 06s lên 01m 26s (+30% trên ResNet18) và từ 01m 48s lên 02m 08s (+18% trên DenseNet121).
+   - **Đánh đổi về thời gian tính toán:** Fine-Tuning đòi hỏi lan truyền ngược qua các khối tích chập sâu nhất, khiến thời gian mỗi epoch tăng từ 01m 06s lên 01m 26s (+30% trên ResNet18) và từ 01m 48s lên 02m 08s (+18% trên DenseNet121).
 
 2. **So sánh Đối đầu ResNet-18 vs. DenseNet-121:**
-   - **Trong Transfer Learning:** DenseNet121 đạt **81.34%**, vượt trội **+3.36%** so với ResNet18 (**77.98%**). Cơ chế *Dense Connectivity* (ghép nối đặc trưng từ tất cả các tầng trước) tạo ra vector đặc trưng 1024 chiều giàu biểu diễn ngữ nghĩa hơn so với 512 chiều của ResNet18.
-   - **Trong Fine-Tuning & Hiệu quả tham số:** Cả hai mô hình đều chạm ngưỡng hội tụ ~90.2%–90.6% Test Acc. Tuy nhiên, DenseNet121 chỉ cần mở khóa **2,170,378 tham số** (31.17%), trong khi ResNet18 phải mở khóa tới **8,398,858 tham số** (75.11%). DenseNet121 đạt hiệu quả biểu diễn trên mỗi tham số huấn luyện cao gấp 3.8 lần.
+   - **Trong Transfer Learning:** DenseNet121 đạt **81.34%**, cao hơn **+3.36%** so với ResNet18 (**77.98%**). Cơ chế *Dense Connectivity* (ghép nối đặc trưng từ các tầng trước) tạo ra vector đặc trưng 1024 chiều giàu biểu diễn ngữ nghĩa hơn so với 512 chiều của ResNet18.
+   - **Trong Fine-Tuning & Tỷ lệ tham số:** Sau 5 epoch, cả hai mô hình đạt Test Accuracy xấp xỉ nhau (**90.24%** ở ResNet18 và **90.65%** ở DenseNet121). Tuy nhiên, DenseNet121 chỉ cần mở khóa **2,170,378 tham số** (31.17%), trong khi ResNet18 mở khóa tới **8,398,858 tham số** (75.11%).
 
 3. **Tác động của Siêu tham số (Hyperparameter Sensitivity):**
-   - **Learning Rate (`1e-3` vs `1e-4`):** Với `lr=1e-4`, mô hình hội tụ mượt mà và ổn định hơn ở các epoch cuối, đạt Test Acc **78.32%** (cao hơn 77.98% của mức chuẩn 1e-3) và Test Loss tương đương (0.6643).
-   - **Batch Size (`16` vs `32`):** Tăng batch size lên 32 giúp tăng thông lượng xử lý tính toán trên CPU (giảm thời gian epoch từ 01m 06s xuống **01m 04s**), đồng thời tăng độ chính xác Test lên **79.04%** (+1.06%) nhờ ước lượng gradient mini-batch ổn định hơn.
+   - **Learning Rate (`1e-3` vs `1e-4`):** Với `lr=1e-4`, mô hình đạt Test Acc **78.32%** (so với 77.98% của mức chuẩn 1e-3) và Test Loss tương đương (0.6643).
+   - **Batch Size (`16` vs `32`):** Cấu hình `batch_size=32` đạt Test Acc **79.04%**, tăng 1.06% so với batch 16 (77.98%) trong điều kiện thực nghiệm 5 epoch và seed 42.
 
-4. **Phân tích Ma trận Nhầm lẫn & Các cặp lớp gây nhiễu:**
+4. **Hiện tượng Overfitting và khoảng cách Train/Val:**
+   - Sau 5 epoch với seed 42, khoảng cách giữa train loss và val loss ở mức ~0.05 và train/test accuracy xấp xỉ ~90–91.5%, cho thấy mô hình duy trì độ khái quát hóa tốt trong phạm vi 5 epoch thử nghiệm với Differential Learning Rate.
+
+5. **Phân tích Ma trận Nhầm lẫn & Các cặp lớp gây nhiễu:**
    - Cặp **Cat (Mèo) $\leftrightarrow$ Dog (Chó)** nhầm lẫn nhiều nhất trong chế độ Transfer Learning (196 ảnh Chó bị đoán nhầm thành Mèo ở ResNet18 Transfer). Kỹ thuật Fine-Tuning đã giảm thiểu lỗi này đáng kể (tăng độ chính xác Dog từ 61.9% lên 91.6%).
-   - Cặp **Bird (Chim) $\leftrightarrow$ Frog / Deer:** Trong Transfer Learning, Bird chỉ đạt 61.8% độ chính xác do độ phân giải nội suy làm mất các chi tiết lông vũ nhỏ trên nền cây cỏ. Khi Fine-Tuning, tỷ lệ này tăng vọt lên 90.4%.
+   - Cặp **Bird (Chim) $\leftrightarrow$ Frog / Deer:** Trong Transfer Learning, Bird đạt 61.8% độ chính xác do độ phân giải nội suy làm giảm các chi tiết vi mô trên nền tự nhiên. Khi Fine-Tuning, tỷ lệ này đạt 90.4%.
    - Các lớp phương tiện cơ giới tách biệt như **Truck** (98.4%) và **Ship** (94.3%) đạt độ chính xác cao nhất nhờ hình thái góc cạnh và nền nước biển đặc trưng.
 
 ---
 
 ### 10.4. Các Cải tiến Kỹ thuật & Gia cố Hệ thống (System Hardening)
 
-Dự án đã áp dụng các biện pháp gia cố kỹ thuật và phòng vệ nghiêm ngặt:
-1. **Bảo toàn Checkpoint State (`best_checkpoint_state`):** Áp dụng `copy.deepcopy()` khi snapshot trạng thái mô hình tại epoch đạt `val_acc` cao nhất, loại trừ nguy cơ checkpoint bị biến đổi tham số khi mô hình tiếp tục huấn luyện các epoch tiếp theo.
-2. **Quản lý Checkpoint linh hoạt:** Hàm `save_run_weights_and_manage_best` hỗ trợ theo dõi cả `val_acc` (tối đại hóa) và `val_loss` (tối thiểu hóa) với logic so sánh nhất quán.
-3. **An toàn Bảo mật Mạng:** Loại bỏ hoàn toàn hành vi bypass xác thực SSL không an toàn (`ssl._create_unverified_context`). Dữ liệu được nạp và trích xuất qua cơ chế chuẩn hóa và kiểm tra checksum.
-4. **Cách ly BatchNorm khi Ghi Đồ thị (`TensorBoardLogger.log_graph`):** Chuyển mô hình sang chế độ `eval()` trước khi thực hiện forward pass trace đồ thị mạng nơ-ron và khôi phục trạng thái ban đầu sau khi trace xong, ngăn chặn việc làm sai lệch bộ đệm `running_mean`/`running_var`.
-5. **Kiểm thực Phòng thủ (Defensive Validations):** Kiểm tra chặt chẽ `weight_decay >= 0`, danh sách optimizer được hỗ trợ, và cờ kiểm tra phát hiện tức thời giá trị Loss bất thường (`NaN` hoặc `Inf`) trong vòng lặp huấn luyện.
-
-> *Chi tiết báo cáo định lượng và ma trận nhầm lẫn của từng thí nghiệm được trình bày đầy đủ tại [docs/results.md](docs/results.md).*
+1. **Cách ly Namespace Smoke Test:** Đảm bảo toàn bộ artifacts của chế độ smoke test (`checkpoints/smoke/`, `outputs/smoke/`, `runs/smoke/`) được tách biệt hoàn toàn, không có nguy cơ ghi đè kết quả và checkpoint chính thức.
+2. **Bảo toàn Checkpoint State & Config Fingerprint:** Hàm `save_run_weights_and_manage_best` kiểm tra tính tương thích của siêu tham số (`learning_rate`, `batch_size`, `image_size`, `method`, `model_name`, `seed`, `val_split`). Nếu có sự sai khác cấu hình, checkpoint tốt nhất cũ được giữ nguyên an toàn; đồng thời hỗ trợ khôi phục metadata khi file meta bị thiếu.
+3. **Chuẩn hóa Thông báo và Nhãn Metric:** Script `run_experiments.py` chỉ thông báo hoàn thành toàn bộ khi không có thí nghiệm nào thất bại, và hiển thị đúng tên metric được cấu hình (`val_acc` hoặc `val_loss`).
+4. **An toàn Bảo mật Mạng:** Loại bỏ hoàn toàn hành vi bypass xác thực SSL không an toàn (`ssl._create_unverified_context`). Dữ liệu được nạp và trích xuất qua cơ chế chuẩn hóa và kiểm tra checksum.
+5. **Cách ly BatchNorm khi Ghi Đồ thị (`TensorBoardLogger.log_graph`):** Chuyển mô hình sang chế độ `eval()` trước khi thực hiện forward pass trace đồ thị mạng nơ-ron và khôi phục trạng thái ban đầu sau khi trace xong.
+6. **Kiểm thực Phòng thủ (Defensive Validations):** Kiểm tra chặt chẽ `weight_decay >= 0`, danh sách optimizer được hỗ trợ, và cờ kiểm tra phát hiện tức thời giá trị Loss bất thường (`NaN` hoặc `Inf`) trong vòng lặp huấn luyện.
 
 ---
 
 ## 11. Limitations
 
-1. **Ràng buộc phần cứng CPU:** Quá trình huấn luyện trên phần cứng CPU (không có card đồ họa GPU rời tăng tốc CUDA) đòi hỏi thời gian tính toán kéo dài khi huấn luyện 5 epochs trên toàn bộ 45.000 mẫu của CIFAR-10.
+1. **Môi trường thực nghiệm chính thức:** Các thí nghiệm chính thức 5 epoch được ghi nhận chạy trên môi trường GPU CUDA (PyTorch 2.6.0+cu124, thời gian 5m 35s đến 10m 42s). Khi chạy lại toàn bộ trên phần cứng CPU đơn thuần, thời gian tính toán sẽ kéo dài hơn nhiều.
 2. **Ảnh hưởng của phép nội suy phóng đại ảnh:** Ảnh gốc CIFAR-10 có kích thước $32 \times 32$. Phép biến đổi bilinear resize lên $128 \times 128$ nhằm tương thích trường tiếp nhận của mạng nạp sẵn từ ImageNet có thể gây mờ một số biên cạnh chi tiết tự nhiên.
 3. **Hiện tượng cập nhật buffer của BatchNorm trong backbone đóng băng (Đã đo đạc thực nghiệm):** Thực nghiệm kiểm tra (`scripts/check_frozen_bn.py`) xác nhận rằng khi mô hình ở trạng thái `model.train()`, toàn bộ 20 lớp BatchNorm (60 buffers) của ResNet18 và 121 lớp BatchNorm (363 buffers) của DenseNet121 trong phần backbone vẫn cập nhật `running_mean` và `running_var` dù tham số trọng số có `requires_grad=False`.
-4. **Giới hạn thực nghiệm đơn seed:** Toàn bộ dữ liệu được đo lường trên một hạt giống ngẫu nhiên duy nhất (`seed=42`). Mọi sự chênh lệch nhỏ về điểm số cần được nhìn nhận trong khoảng phương sai thống kê.
+4. **Giới hạn thực nghiệm 5 epoch và đơn seed:** Toàn bộ dữ liệu được đo lường sau 5 epoch trên một hạt giống ngẫu nhiên duy nhất (`seed=42`). Cần lưu ý 5 epoch chưa đủ để khẳng định sự hội tụ hoàn toàn của mô hình, và các chênh lệch số liệu cần được nhìn nhận trong khoảng phương sai thống kê khi mở rộng đa seed.
+5. **Chia tập dữ liệu chưa phân tầng:** Phép chia train/val dùng `random_split()` với seed cố định theo yêu cầu của Practice 2; phương pháp này đảm bảo tính tái lập nhưng chưa đảm bảo tỷ lệ lớp hoàn toàn đồng đều giữa train và validation.
 
 ---
 
@@ -394,7 +380,7 @@ Dự án đã áp dụng các biện pháp gia cố kỹ thuật và phòng vệ
 1. **Đặt tường minh các lớp BatchNorm đóng băng ở chế độ eval:** Trong quá trình huấn luyện transfer learning, áp dụng hàm chuyển đổi để giữ nguyên các lớp BatchNorm của backbone ở `module.eval()` nhằm bảo toàn 100% thống kê của ImageNet.
 2. **Learning Rate Scheduler:** Bổ sung cơ chế giảm tốc độ học tự động như `CosineAnnealingLR` hoặc `ReduceLROnPlateau` để tối ưu hóa sự hội tụ ở các epoch cuối.
 3. **Data Augmentation nâng cao:** Bổ sung AutoAugment hoặc RandAugment để gia tăng độ phong phú dữ liệu huấn luyện cho giai đoạn Fine-tuning.
-4. **Thực nghiệm đa seed:** Chạy thực nghiệm lặp lại trên 3–5 seeds ngẫu nhiên độc lập để tính toán giá trị trung bình kèm khoảng tin cậy thống kê chuẩn xác.
+4. **Thực nghiệm đa seed và Stratified Split:** Chạy thực nghiệm lặp lại trên 3–5 seeds ngẫu nhiên độc lập để tính toán giá trị trung bình kèm khoảng tin cậy thống kê chuẩn xác, kết hợp chia tập dữ liệu phân tầng theo từng lớp.
 
 ---
 

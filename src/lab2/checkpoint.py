@@ -5,6 +5,7 @@ Checkpoint saving, loading, and safe weight management utilities with integrity 
 from datetime import datetime, timezone
 import json
 import os
+import shutil
 import tempfile
 from typing import Any, Dict, Iterable, List, Optional, Set
 import torch
@@ -151,24 +152,30 @@ def save_run_weights_and_manage_best(
     seed: int,
     val_split: float,
     keep_latest: bool = False,
-    checkpoint_metric: str = "val_acc"
+    checkpoint_metric: str = "val_acc",
+    config_dict: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """
     Manages weights and best checkpoint for an experiment after each run:
     1. Always saves checkpoints/<exp>_weights.pth with state_dict of best epoch in this run.
     2. Keeps best across all runs in checkpoints/<exp>_best.pth + <exp>_best_meta.json.
     3. Replaces best if run metric improves over previous best in meta (higher val_acc or lower val_loss).
-    4. Warns and preserves best if seed or val_split differs.
-    5. Replaces best with warning if best.pth exists but meta is missing.
-    6. Prunes old weights and .tmp files of this experiment.
+    4. Warns and preserves best if seed, val_split, or other essential hyperparameters differ.
+    5. Preserves existing best checkpoint and recovers metadata if best.pth exists but meta is missing or corrupt.
+    6. Saves dedicated per-run metadata (<exp>_weights_meta.json).
+    7. Prunes old weights and .tmp files of this experiment.
     """
     logger = get_logger()
     checkpoint_dir = os.path.abspath(checkpoint_dir)
     os.makedirs(checkpoint_dir, exist_ok=True)
 
     weights_path = os.path.join(checkpoint_dir, f"{exp_name}_weights.pth")
+    weights_meta_path = os.path.join(checkpoint_dir, f"{exp_name}_weights_meta.json")
     best_path = os.path.join(checkpoint_dir, f"{exp_name}_best.pth")
     meta_path = os.path.join(checkpoint_dir, f"{exp_name}_best_meta.json")
+
+    # Current run configuration fingerprint
+    current_cfg = config_dict or run_best_checkpoint_state.get("config", {}) or {}
 
     # 1. Always save run weights (only state_dict) atomically
     atomic_save(run_best_state_dict, weights_path, is_torch=True)
@@ -177,67 +184,151 @@ def save_run_weights_and_manage_best(
     weights_size = os.path.getsize(weights_path)
     logger.info(f"Saved run weights: '{to_relative_path(weights_path)}' ({weights_size} bytes)")
 
-    # 2. Check metadata to decide if best checkpoint should be updated
+    # Save per-run weights metadata
+    run_meta = {
+        "experiment_name": exp_name,
+        "run_metric": float(run_best_val_acc),
+        "checkpoint_metric": checkpoint_metric,
+        "epoch": int(run_best_epoch),
+        "saved_at": datetime.now(timezone.utc).isoformat(),
+        "seed": int(seed),
+        "val_split": float(val_split),
+        "config": {
+            "model_name": current_cfg.get("model_name"),
+            "method": current_cfg.get("method"),
+            "learning_rate": current_cfg.get("learning_rate"),
+            "batch_size": current_cfg.get("batch_size"),
+            "image_size": current_cfg.get("image_size"),
+            "seed": int(seed),
+            "val_split": float(val_split),
+            "checkpoint_metric": checkpoint_metric
+        }
+    }
+    atomic_save(run_meta, weights_meta_path, is_torch=False)
+
+    # 2. Check metadata and compatibility to decide if best checkpoint should be updated
     should_update_best = False
     meta_exists = os.path.exists(meta_path)
     best_exists = os.path.exists(best_path)
 
+    existing_meta: Dict[str, Any] = {}
+
     if not meta_exists:
         if best_exists:
-            logger.warning(
-                f"Existing best checkpoint '{to_relative_path(best_path)}' has no metadata file '{to_relative_path(meta_path)}'. "
-                f"Overwriting with new run best checkpoint."
-            )
+            # Metadata missing but best.pth exists: attempt recovery from best.pth
+            recovered_meta: Optional[Dict[str, Any]] = None
+            try:
+                best_data = torch.load(best_path, map_location="cpu")
+                if isinstance(best_data, dict):
+                    raw_cfg = best_data.get("config", {}) or {}
+                    raw_metric = best_data.get("best_metric", best_data.get("val_acc", best_data.get("val_loss")))
+                    recovered_meta = {
+                        "experiment_name": exp_name,
+                        "best_metric": float(raw_metric) if raw_metric is not None else None,
+                        "epoch": best_data.get("best_epoch", best_data.get("epoch", 1)),
+                        "seed": raw_cfg.get("seed"),
+                        "val_split": raw_cfg.get("val_split"),
+                        "checkpoint_metric": raw_cfg.get("checkpoint_metric", checkpoint_metric),
+                        "config": raw_cfg
+                    }
+                    if raw_cfg.get("checkpoint_metric") == "val_loss" or checkpoint_metric == "val_loss":
+                        recovered_meta["best_val_loss"] = float(raw_metric) if raw_metric is not None else None
+                    else:
+                        recovered_meta["best_val_acc"] = float(raw_metric) if raw_metric is not None else None
+            except Exception as e:
+                logger.warning(
+                    f"Could not inspect existing best checkpoint '{to_relative_path(best_path)}' to recover metadata: {e}"
+                )
+
+            if recovered_meta and recovered_meta.get("best_metric") is not None:
+                logger.info(
+                    f"Recovered metadata from existing best checkpoint '{to_relative_path(best_path)}'. "
+                    f"Comparing against current run."
+                )
+                existing_meta = recovered_meta
+                meta_exists = True
+            else:
+                # Cannot recover: create safety backup before replacing
+                backup_path = best_path + ".bak"
+                try:
+                    shutil.copy2(best_path, backup_path)
+                    logger.warning(
+                        f"Existing best checkpoint '{to_relative_path(best_path)}' has no metadata and could not be recovered. "
+                        f"Created safety backup at '{to_relative_path(backup_path)}'."
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to create backup of existing best checkpoint: {e}")
+                should_update_best = True
         else:
             logger.info(
                 f"No previous best checkpoint found for '{exp_name}'. Initializing best checkpoint."
             )
-        should_update_best = True
-    else:
-        try:
-            with open(meta_path, "r", encoding="utf-8") as f:
-                existing_meta = json.load(f)
-        except Exception as e:
-            logger.warning(
-                f"Could not read metadata at '{to_relative_path(meta_path)}': {e}. "
-                f"Overwriting with new run best."
-            )
-            existing_meta = {}
+            should_update_best = True
 
-        prev_seed = existing_meta.get("seed")
-        prev_val_split = existing_meta.get("val_split")
-        
-        # Support both val_acc (higher is better) and val_loss (lower is better)
-        if checkpoint_metric == "val_loss":
-            default_prev = float("inf")
-            prev_best_metric = existing_meta.get("best_metric", existing_meta.get("best_val_loss", default_prev))
-            is_better = run_best_val_acc < prev_best_metric
-        else:
-            default_prev = -float("inf")
-            prev_best_metric = existing_meta.get("best_metric", existing_meta.get("best_val_acc", default_prev))
-            is_better = run_best_val_acc > prev_best_metric
-
-        # Check comparability
-        if (prev_seed is not None and prev_seed != seed) or (prev_val_split is not None and prev_val_split != val_split):
-            logger.warning(
-                f"Configuration mismatch for '{exp_name}': previous run had seed={prev_seed}, val_split={prev_val_split}; "
-                f"current run has seed={seed}, val_split={val_split}. "
-                f"Results are incomparable; retaining existing best checkpoint and updating only '{exp_name}_weights.pth'."
-            )
-            should_update_best = False
-        else:
-            if is_better:
-                logger.info(
-                    f"New {checkpoint_metric} ({run_best_val_acc:.4f}) improved over previous best ({prev_best_metric:.4f}). "
-                    f"Updating best checkpoint for '{exp_name}'."
+    if meta_exists:
+        if not existing_meta:
+            try:
+                with open(meta_path, "r", encoding="utf-8") as f:
+                    existing_meta = json.load(f)
+            except Exception as e:
+                logger.warning(
+                    f"Could not read metadata at '{to_relative_path(meta_path)}': {e}. "
+                    f"Preserving existing best checkpoint and logging warning."
                 )
-                should_update_best = True
-            else:
-                logger.info(
-                    f"New {checkpoint_metric} ({run_best_val_acc:.4f}) did not improve over previous best ({prev_best_metric:.4f}). "
-                    f"Retaining existing best checkpoint for '{exp_name}'."
+                existing_meta = {}
+
+        if existing_meta:
+            prev_seed = existing_meta.get("seed")
+            prev_val_split = existing_meta.get("val_split")
+            prev_cfg = existing_meta.get("config", {}) or {}
+
+            # Check configuration compatibility
+            mismatches: List[str] = []
+            if prev_seed is not None and prev_seed != seed:
+                mismatches.append(f"seed: {prev_seed} vs {seed}")
+            if prev_val_split is not None and prev_val_split != val_split:
+                mismatches.append(f"val_split: {prev_val_split} vs {val_split}")
+
+            # Check hyperparameters fingerprint if available
+            for param in ["model_name", "method", "learning_rate", "batch_size", "image_size"]:
+                curr_val = current_cfg.get(param)
+                prev_val = prev_cfg.get(param, existing_meta.get(param))
+                if curr_val is not None and prev_val is not None and curr_val != prev_val:
+                    mismatches.append(f"{param}: {prev_val} vs {curr_val}")
+
+            prev_metric_name = existing_meta.get("checkpoint_metric")
+            if prev_metric_name is not None and prev_metric_name != checkpoint_metric:
+                mismatches.append(f"checkpoint_metric: {prev_metric_name} vs {checkpoint_metric}")
+
+            if mismatches:
+                logger.warning(
+                    f"Configuration mismatch for '{exp_name}': {', '.join(mismatches)}. "
+                    f"Results are incomparable; retaining existing best checkpoint and updating only '{exp_name}_weights.pth'."
                 )
                 should_update_best = False
+            else:
+                # Support both val_acc (higher is better) and val_loss (lower is better)
+                if checkpoint_metric == "val_loss":
+                    default_prev = float("inf")
+                    prev_best_metric = existing_meta.get("best_metric", existing_meta.get("best_val_loss", default_prev))
+                    is_better = run_best_val_acc < prev_best_metric
+                else:
+                    default_prev = -float("inf")
+                    prev_best_metric = existing_meta.get("best_metric", existing_meta.get("best_val_acc", default_prev))
+                    is_better = run_best_val_acc > prev_best_metric
+
+                if is_better:
+                    logger.info(
+                        f"New {checkpoint_metric} ({run_best_val_acc:.4f}) improved over previous best ({prev_best_metric:.4f}). "
+                        f"Updating best checkpoint for '{exp_name}'."
+                    )
+                    should_update_best = True
+                else:
+                    logger.info(
+                        f"New {checkpoint_metric} ({run_best_val_acc:.4f}) did not improve over previous best ({prev_best_metric:.4f}). "
+                        f"Retaining existing best checkpoint for '{exp_name}'."
+                    )
+                    should_update_best = False
 
     # 3. Update best checkpoint and metadata if applicable
     if should_update_best:
@@ -249,14 +340,28 @@ def save_run_weights_and_manage_best(
 
         new_meta = {
             "experiment_name": exp_name,
-            "best_val_acc": float(run_best_val_acc),
             "best_metric": float(run_best_val_acc),
             "checkpoint_metric": checkpoint_metric,
             "epoch": int(run_best_epoch),
             "saved_at": datetime.now(timezone.utc).isoformat(),
             "seed": int(seed),
-            "val_split": float(val_split)
+            "val_split": float(val_split),
+            "config": {
+                "model_name": current_cfg.get("model_name"),
+                "method": current_cfg.get("method"),
+                "learning_rate": current_cfg.get("learning_rate"),
+                "batch_size": current_cfg.get("batch_size"),
+                "image_size": current_cfg.get("image_size"),
+                "seed": int(seed),
+                "val_split": float(val_split),
+                "checkpoint_metric": checkpoint_metric
+            }
         }
+        if checkpoint_metric == "val_loss":
+            new_meta["best_val_loss"] = float(run_best_val_acc)
+        else:
+            new_meta["best_val_acc"] = float(run_best_val_acc)
+
         atomic_save(new_meta, meta_path, is_torch=False)
         logger.info(f"Saved best metadata: '{to_relative_path(meta_path)}'")
 

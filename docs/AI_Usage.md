@@ -7,7 +7,7 @@ Tài liệu này công khai việc sử dụng các công cụ trí tuệ nhân 
 ## 1. Công cụ AI Đã sử dụng
 
 - **Claude 3.7 Sonnet (Anthropic):** Hỗ trợ phân tích yêu cầu đề bài Practice 2 và gợi ý khung tài liệu thiết kế ban đầu.
-- **Antigravity AI Assistant (Google DeepMind):** Hỗ trợ soạn thảo các đoạn mã khung (boilerplate code), cú pháp kịch bản kiểm thử tự động và tài liệu hóa kỹ thuật.
+- **Antigravity AI Assistant (Google DeepMind):** Hỗ trợ soạn thảo các đoạn mã khung (boilerplate code), cú pháp kịch bản kiểm thử tự động, tài liệu hóa kỹ thuật và hỗ trợ rà soát kiểm toán hệ thống.
 
 ---
 
@@ -18,6 +18,7 @@ Các thành phần có sự hỗ trợ của công cụ AI:
 - Gợi ý cú pháp cho bộ kiểm thử tự động ban đầu trong `tests/`.
 - Hỗ trợ xây dựng kịch bản kiểm tra hiện tượng cập nhật bộ đệm BatchNorm (`scripts/check_frozen_bn.py`).
 - Hỗ trợ định dạng và tạo cấu trúc notebook Jupyter (`scripts/generate_main_notebook.py`, `scripts/generate_analysis_notebook.py`).
+- Rà soát các cảnh báo kiểm toán liên quan đến namespace smoke test và quản lý checkpoint.
 
 ---
 
@@ -32,7 +33,10 @@ Toàn bộ các quyết định kỹ thuật then chốt, kiểm tra mã nguồn
 6. **Gia cố an toàn lưu trữ Checkpoint (`best_checkpoint_state`):** Phát hiện và khắc phục nguy cơ trôi tham số checkpoint tốt nhất bằng `copy.deepcopy()` trên `model.state_dict()`.
 7. **Khắc phục lỗ hổng bảo mật mạng:** Loại bỏ triệt để việc bypass kiểm tra chứng chỉ SSL (`ssl._create_unverified_context`), thay thế bằng cơ chế tải và giải nén dữ liệu chuẩn hóa, kiểm tra checksum an toàn.
 8. **Cách ly BatchNorm khi Ghi Đồ thị (`TensorBoardLogger.log_graph`):** Chuyển mô hình sang `eval()` khi trace graph mạng và khôi phục trạng thái ban đầu để tránh làm sai lệch bộ đệm BatchNorm.
-9. **Bổ sung Kiểm thực Phòng thủ (Defensive Validations):** Thêm ràng buộc `weight_decay >= 0`, kiểm tra optimizer hợp lệ, và phát hiện giá trị Loss bất thường (`NaN`/`Inf`) trong vòng lặp huấn luyện kèm 4 bài test hồi quy mới nâng tổng số test lên 62.
+9. **Bổ sung Kiểm thực Phòng thủ (Defensive Validations):** Thêm ràng buộc `weight_decay >= 0`, kiểm tra optimizer hợp lệ, và phát hiện giá trị Loss bất thường (`NaN`/`Inf`) trong vòng lặp huấn luyện.
+10. **Tách biệt hoàn toàn Namespace Smoke Test:** Độc lập hóa đường dẫn lưu trữ của smoke test (`checkpoints/smoke/`, `outputs/smoke/`, `runs/smoke/`) nhằm loại bỏ triệt để rủi ro ghi đè checkpoint, metrics và TensorBoard của các thí nghiệm chính thức.
+11. **Gia cố Checkpoint Fingerprint & Recovery:** Bổ sung kiểm tra tính tương thích siêu tham số (`learning_rate`, `batch_size`, `image_size`, `method`, `model_name`, `seed`, `val_split`), cơ chế tự động khôi phục metadata khi file JSON bị mất/hỏng và bảo toàn checkpoint cũ khi có xung đột cấu hình (bổ sung 2 test mới nâng tổng số test lên 64).
+12. **Minh bạch hóa Môi trường Thực nghiệm & Câu chữ Báo cáo:** Đính chính rõ ràng môi trường thực nghiệm chính thức 5 epoch là GPU NVIDIA CUDA (`device: 'cuda'`, PyTorch `2.6.0+cu124`), loại bỏ các tuyên bố suy diễn nhân quả hoặc khẳng định hội tụ quá mức bằng các nhận định định lượng khách quan.
 
 ---
 
@@ -42,7 +46,7 @@ Mọi đoạn mã và kết quả đều được kiểm chứng độc lập th
 1. **Kiểm thử tự động:**
    ```bash
    python -m pytest -q
-   # Kết quả: 62 passed in 13.37s (100% pass)
+   # Kết quả: 64 passed in 35s (100% pass)
    ```
 2. **Kiểm chứng số lượng tham số mô hình:**
    ```bash
@@ -55,7 +59,12 @@ Mọi đoạn mã và kết quả đều được kiểm chứng độc lập th
    python scripts/check_frozen_bn.py
    # Kết quả: 100% buffer cập nhật ở chế độ train; 0% buffer thay đổi ở chế độ eval
    ```
-4. **Kiểm tra cú pháp và thực thi Notebook:**
+4. **Kiểm chứng Namespace Smoke Test:**
+   ```bash
+   python scripts/run_experiments.py --smoke-test --experiment resnet18_transfer
+   # Kết quả: Ghi file vào checkpoints/smoke/, outputs/smoke/, runs/smoke/; không thay đổi tệp chính thức
+   ```
+5. **Kiểm tra cú pháp và thực thi Notebook:**
    ```bash
    python -m pytest tests/test_notebooks.py -v
    # Kết quả: 10/10 notebook tests passed

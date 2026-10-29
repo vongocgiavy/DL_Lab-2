@@ -18,6 +18,7 @@ runs/*
 !runs/.gitkeep
 
 # Outputs
+outputs/smoke/
 outputs/metrics/*
 outputs/figures/*
 !outputs/metrics/.gitkeep

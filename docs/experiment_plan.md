@@ -33,7 +33,7 @@ Dự án được chia thành 2 nhóm thí nghiệm rõ ràng: Nhóm **Core** (4
    - Augmentation: Giống hệt nhau trên tập train (`RandomCrop`, `RandomHorizontalFlip(p=0.5)`) và không có augmentation trên validation/test.
 3. **Hàm mất mát (Loss Function):** Sử dụng `nn.CrossEntropyLoss()` cho toàn bộ các thí nghiệm.
 4. **Quy tắc chọn Checkpoint:** Dựa trên cùng 1 thước đo duy nhất: `val_acc` cao nhất trong quá trình huấn luyện.
-5. **Môi trường phần cứng:** Huấn luyện hoàn toàn trên CPU (`device='cpu'`) để kiểm soát công bằng điều kiện tính toán và đo runtime thực tế.
+5. **Môi trường phần cứng:** Các thí nghiệm 5 epoch chính thức được huấn luyện trên GPU NVIDIA CUDA (`device='cuda'`, PyTorch 2.6.0+cu124) để đảm bảo tính khả thi về thời gian thực nghiệm (5–11 phút/thí nghiệm); hệ thống hỗ trợ thực thi trên CPU thông qua cờ `--device cpu` hoặc khi chạy smoke test / unit test.
 6. **Giới hạn hạt giống ngẫu nhiên (Single-Seed Limitation):** Toàn bộ thực nghiệm hiện cố định tại một hạt giống ngẫu nhiên duy nhất (`seed=42`). Mặc dù đảm bảo tính tái lập 100% cho bài thực hành, kết quả chưa phản ánh phương sai thống kê (mean ± std qua nhiều seed khác nhau như 0, 42, 123). Đây là một giới hạn thực nghiệm được ghi nhận tường minh.
 
 ---

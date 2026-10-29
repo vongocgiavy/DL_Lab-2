@@ -353,7 +353,8 @@ def run_training(
         seed=cfg.seed,
         val_split=cfg.val_split,
         keep_latest=False,
-        checkpoint_metric=cfg.checkpoint_metric
+        checkpoint_metric=cfg.checkpoint_metric,
+        config_dict=vars(cfg)
     )
 
     app_logger.info(

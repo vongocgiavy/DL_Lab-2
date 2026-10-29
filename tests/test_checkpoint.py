@@ -494,3 +494,125 @@ def test_best_checkpoint_state_is_deep_independent_snapshot(tmp_path):
     assert torch.allclose(best_checkpoint_state["model_state_dict"]["fc.weight"], torch.tensor(5.0))
     assert not torch.allclose(best_checkpoint_state["model_state_dict"]["fc.weight"], model.fc.weight)
 
+
+
+# -----------------------------------------------------------------------------
+# Test 11: Incompatible hyperparameters retain existing best checkpoint
+# -----------------------------------------------------------------------------
+
+def test_incompatible_hyperparameters_retains_existing_best(tmp_path):
+    """(11) Khác biệt hyperparameter (learning_rate, batch_size) từ chối cập nhật best checkpoint."""
+    model = TinyTestModel()
+    with torch.no_grad():
+        model.fc.weight.fill_(1.0)
+    state1 = model.state_dict()
+    ckpt1 = {
+        "epoch": 2,
+        "model_state_dict": state1,
+        "val_acc": 75.0,
+        "config": {"learning_rate": 0.001, "batch_size": 16, "model_name": "resnet18"}
+    }
+
+    # Run 1: lr=0.001
+    save_run_weights_and_manage_best(
+        checkpoint_dir=str(tmp_path),
+        exp_name="exp_hparam",
+        run_best_state_dict=state1,
+        run_best_checkpoint_state=ckpt1,
+        run_best_val_acc=75.0,
+        run_best_epoch=2,
+        seed=42,
+        val_split=0.1,
+        config_dict=ckpt1["config"]
+    )
+
+    # Run 2: lr=0.0001 (incompatible LR!), higher acc=85.0
+    with torch.no_grad():
+        model.fc.weight.fill_(2.0)
+    state2 = model.state_dict()
+    ckpt2 = {
+        "epoch": 3,
+        "model_state_dict": state2,
+        "val_acc": 85.0,
+        "config": {"learning_rate": 0.0001, "batch_size": 16, "model_name": "resnet18"}
+    }
+
+    res2 = save_run_weights_and_manage_best(
+        checkpoint_dir=str(tmp_path),
+        exp_name="exp_hparam",
+        run_best_state_dict=state2,
+        run_best_checkpoint_state=ckpt2,
+        run_best_val_acc=85.0,
+        run_best_epoch=3,
+        seed=42,
+        val_split=0.1,
+        config_dict=ckpt2["config"]
+    )
+
+    # Best must not be updated due to hyperparameter mismatch
+    assert res2["best_updated"] is False
+    best_data = torch.load(tmp_path / "exp_hparam_best.pth", map_location="cpu")
+    assert torch.allclose(best_data["model_state_dict"]["fc.weight"], torch.tensor(1.0))
+
+
+# -----------------------------------------------------------------------------
+# Test 12: Recovery of metadata from existing best.pth when meta.json is missing
+# -----------------------------------------------------------------------------
+
+def test_missing_meta_recovers_from_existing_best_checkpoint(tmp_path):
+    """(12) Khi best_meta.json bị mất, hệ thống khôi phục từ best.pth và bảo toàn nếu run mới kém hơn."""
+    model = TinyTestModel()
+    with torch.no_grad():
+        model.fc.weight.fill_(7.0)
+    state1 = model.state_dict()
+    ckpt1 = {
+        "epoch": 4,
+        "model_state_dict": state1,
+        "best_metric": 88.0,
+        "val_acc": 88.0,
+        "config": {"seed": 42, "val_split": 0.1, "checkpoint_metric": "val_acc"}
+    }
+
+    # Save initial run
+    save_run_weights_and_manage_best(
+        checkpoint_dir=str(tmp_path),
+        exp_name="exp_recover",
+        run_best_state_dict=state1,
+        run_best_checkpoint_state=ckpt1,
+        run_best_val_acc=88.0,
+        run_best_epoch=4,
+        seed=42,
+        val_split=0.1
+    )
+
+    # Delete meta.json to simulate corruption/loss
+    meta_path = tmp_path / "exp_recover_best_meta.json"
+    assert meta_path.exists()
+    meta_path.unlink()
+
+    # New run with lower val_acc (60.0%)
+    with torch.no_grad():
+        model.fc.weight.fill_(8.0)
+    state2 = model.state_dict()
+    ckpt2 = {
+        "epoch": 2,
+        "model_state_dict": state2,
+        "val_acc": 60.0,
+        "config": {"seed": 42, "val_split": 0.1, "checkpoint_metric": "val_acc"}
+    }
+
+    res2 = save_run_weights_and_manage_best(
+        checkpoint_dir=str(tmp_path),
+        exp_name="exp_recover",
+        run_best_state_dict=state2,
+        run_best_checkpoint_state=ckpt2,
+        run_best_val_acc=60.0,
+        run_best_epoch=2,
+        seed=42,
+        val_split=0.1
+    )
+
+    # Should NOT overwrite recovered 88.0% best
+    assert res2["best_updated"] is False
+    best_data = torch.load(tmp_path / "exp_recover_best.pth", map_location="cpu")
+    assert torch.allclose(best_data["model_state_dict"]["fc.weight"], torch.tensor(7.0))

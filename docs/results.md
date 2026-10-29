@@ -1,14 +1,15 @@
 # Experimental Results & Analysis — Lab 2
 
 ## 1. Giới thiệu và Phương pháp Ghi nhận Kết quả
-Báo cáo ghi nhận các kết quả đo đạc thực nghiệm trên môi trường tính toán CPU (Intel Core i5-12450HX, 24 GB RAM, Windows 11).
-Các trường dữ liệu chưa hoàn thành đủ 5 epochs được ghi nhận bằng nhãn `*Chờ kết quả thực nghiệm*`.
+Báo cáo ghi nhận các kết quả đo đạc thực nghiệm trên môi trường GPU NVIDIA hỗ trợ CUDA (PyTorch `2.6.0+cu124`, torchvision `0.21.0+cu124`), với thời gian thực thi thực tế từ 5 phút 35 giây đến 10 phút 42 giây cho 5 epochs của mỗi thí nghiệm.
+Hệ thống đồng thời hỗ trợ kiểm thử và tái lập trên môi trường CPU (Windows 11, Intel Core i5, Python 3.13.5).
+Mọi số liệu trong báo cáo đều được trích xuất trực tiếp từ các tệp `outputs/metrics/*.json` và `outputs/metrics/summary.csv`.
 
 ---
 
 ## 2. Kết quả Khảo sát Kiến trúc và Phân tích Tham số (Architecture Inspection)
 
-Được trích xuất trực tiếp thông qua lệnh `py scripts/inspect_models.py`:
+Được trích xuất trực tiếp thông qua lệnh `python scripts/inspect_models.py`:
 
 | Experiment ID | Nhóm | Kiến trúc | Phương pháp | Tổng tham số (Total) | Tham số Trainable | Tham số Bị đóng băng (Frozen) | Tỷ lệ Trainable (%) |
 |:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
@@ -21,9 +22,9 @@ Các trường dữ liệu chưa hoàn thành đủ 5 epochs được ghi nhận
 
 ### Nhận xét phân tích kiến trúc:
 1. **ResNet18 Transfer Learning:** Chỉ duy nhất tầng kết nối đầy đủ cuối cùng (`fc.weight` và `fc.bias`) với $512 \times 10 + 10 = 5.130$ tham số được cập nhật. Toàn bộ các khối `conv1`, `bn1`, `layer1`, `layer2`, `layer3`, `layer4` đều đóng băng hoàn toàn.
-2. **ResNet18 Fine-Tuning:** Khi mở khóa khối tích chập sâu nhất `layer4` (gồm 2 BasicBlocks) cùng `fc`, số lượng tham số trainable tăng vọt lên 8.398.858 (chiếm 75.11% tổng mô hình), cho phép mô hình thích nghi các bộ lọc biểu diễn đặc trưng cấp cao theo dữ liệu CIFAR-10.
+2. **ResNet18 Fine-Tuning:** Khi mở khóa khối tích chập sâu nhất `layer4` (gồm 2 BasicBlocks) cùng `fc`, số lượng tham số trainable tăng lên 8.398.858 (chiếm 75.11% tổng mô hình), cho phép mô hình thích nghi các bộ lọc biểu diễn đặc trưng cấp cao theo dữ liệu CIFAR-10.
 3. **DenseNet121 Transfer Learning:** Tầng phân loại `classifier` mới nhận đầu vào $1.024$ kênh, tạo ra $1.024 \times 10 + 10 = 10.250$ tham số cần huấn luyện (chiếm 0.15%).
-4. **DenseNet121 Fine-Tuning:** Khác với ResNet, cấu trúc DenseNet có cơ chế nối ghép đặc trưng (feature concatenation). Việc mở khóa `denseblock4` (16 dense layers), `norm5` và `classifier` chỉ kích hoạt 2.170.378 tham số (chiếm 31.17%), giúp fine-tuning rất nhẹ nhàng và tiết kiệm tài nguyên tính toán hơn so với ResNet18.
+4. **DenseNet121 Fine-Tuning:** Khác với ResNet, cấu trúc DenseNet có cơ chế nối ghép đặc trưng (feature concatenation). Việc mở khóa `denseblock4` (16 dense layers), `norm5` và `classifier` chỉ kích hoạt 2.170.378 tham số (chiếm 31.17%), giúp fine-tuning tối ưu số lượng tham số huấn luyện hơn đáng kể so với ResNet18.
 
 ---
 
@@ -46,22 +47,22 @@ Bảng tổng hợp chính thức trích xuất tự động từ `outputs/metri
 
 ### 4.1. So sánh 4 Thí nghiệm Nòng cốt (Core Experiments)
 - **Transfer Learning vs Fine-Tuning trên ResNet18:**
-  - *Số liệu thực tế:* Fine-Tuning giúp Test Accuracy tăng vượt bậc từ **77.98% lên 90.24%** (+12.26%), Test Loss giảm từ 0.6644 xuống 0.2989.
-  - *Đánh đổi (Trade-off):* Thời gian mỗi epoch tăng từ 01m 06s lên 01m 26s do lan truyền ngược qua 8.4 triệu tham số của `layer4`.
+  - *Số liệu thực tế:* Fine-Tuning giúp Test Accuracy tăng từ **77.98% lên 90.24%** (+12.26%), Test Loss giảm từ 0.6644 xuống 0.2989.
+  - *Đánh đổi về thời gian tính toán:* Thời gian mỗi epoch tăng từ 01m 06s lên 01m 26s do lan truyền ngược qua 8.4 triệu tham số của `layer4`.
 - **ResNet18 vs DenseNet121 trong Transfer Learning:**
-  - *Số liệu thực tế:* DenseNet121 đạt **81.34%**, cao hơn **+3.36%** so với ResNet18 (77.98%), Test Loss thấp hơn đáng kể (0.5560 vs 0.6644).
+  - *Số liệu thực tế:* DenseNet121 đạt **81.34%**, cao hơn **+3.36%** so với ResNet18 (77.98%), Test Loss thấp hơn (0.5560 vs 0.6644).
   - *Giải thích:* Cơ chế Dense Connectivity nối ghép toàn bộ bản đồ đặc trưng trước đó tạo ra biểu diễn đặc trưng 1024 chiều giàu thông tin hơn vector 512 chiều của ResNet18.
-- **Hiệu quả Tham số trong Fine-Tuning:**
-  - Cả ResNet18 và DenseNet121 đều chạm ngưỡng hội tụ ~90.2%–90.6% Test Acc.
-  - Tuy nhiên, DenseNet121 chỉ cần mở khóa **2,170,378 tham số** (31.17%), trong khi ResNet18 phải mở khóa **8,398,858 tham số** (75.11%). DenseNet121 tiết kiệm tài nguyên tham số hơn đáng kể.
-- **Hiện tượng Overfitting:**
-  - Ở cả hai mô hình Fine-Tuning, Train Accuracy đạt xấp xỉ 90–91.5% và Test Accuracy đạt ~90.2%–90.6%, khoảng cách giữa train và validation/test loss nhỏ (~0.05), chứng minh việc dùng Differential LR (`lr_backbone = 1e-4`, `lr_head = 1e-3`) đã kiểm soát overfitting cực kỳ hiệu quả mà không làm suy thoái trọng số tiền huấn luyện ImageNet.
+- **Tỷ lệ Tham số trong Fine-Tuning:**
+  - Sau 5 epoch, cả ResNet18 và DenseNet121 đều đạt độ chính xác Test ở mức xấp xỉ nhau (**90.24%** và **90.65%**).
+  - Tuy nhiên, DenseNet121 chỉ cần mở khóa **2,170,378 tham số** (31.17%), trong khi ResNet18 phải mở khóa **8,398,858 tham số** (75.11%).
+- **Hiện tượng Overfitting và khoảng cách Train/Val:**
+  - Ở cả hai mô hình Fine-Tuning, sau 5 epoch với seed 42, khoảng cách giữa train loss và validation loss ở mức nhỏ (~0.05) và train/test accuracy xấp xỉ ~90–91.5%, cho thấy mô hình duy trì độ khái quát hóa tốt trong phạm vi 5 epoch thử nghiệm với Differential Learning Rate (`lr_backbone = 1e-4`, `lr_head = 1e-3`).
 
 ### 4.2. Khảo sát Siêu tham số (Hyperparameter Experiments)
 - **Tốc độ học (Learning Rate: `1e-3` vs `1e-4`):**
   - Cấu hình `lr=1e-4` (`resnet18_transfer_lr1e4`) đạt Test Acc **78.32%**, nhỉnh hơn 77.98% của cấu hình chuẩn `lr=1e-3`. Tốc độ học nhỏ hơn giúp quá trình tối ưu classification head mượt mà, tránh dao động lớn quanh cực tiểu ở các epoch cuối.
 - **Kích thước Batch (Batch Size: `16` vs `32`):**
-  - Cấu hình `batch_size=32` (`resnet18_transfer_bs32`) rút ngắn thời gian mỗi epoch từ 01m 06s xuống **01m 04s** (tăng thông lượng vector hóa trên CPU), đồng thời đạt Test Acc **79.04%** (+1.06% so với batch 16) nhờ gradient mini-batch ít ồn hơn.
+  - Cấu hình `batch_size=32` (`resnet18_transfer_bs32`) rút ngắn thời gian mỗi epoch từ 01m 06s xuống **01m 04s**, đồng thời đạt Test Acc **79.04%** (+1.06% so với batch 16) trong điều kiện thực nghiệm 5 epoch và seed 42.
 
 ---
 
@@ -86,7 +87,7 @@ Dữ liệu trích xuất chính thức từ các tệp `outputs/metrics/*_test_
 ### 5.2. Các cặp lớp dễ nhầm lẫn nhất (Top Confused Pairs)
 Phân tích trích xuất từ ma trận nhầm lẫn (`confusion_matrix`):
 1. **Cat (Mèo) $\leftrightarrow$ Dog (Chó):** Cặp gây nhầm lẫn lớn nhất trong chế độ Feature Extraction. Ở `resnet18_transfer`, có tới 196 ảnh Chó bị phân loại nhầm thành Mèo (chiếm gần 20% tập test của lớp Dog). Kỹ thuật Fine-Tuning đã giảm mạnh số lượng nhầm lẫn này, đưa độ chính xác Dog từ 61.9% lên 91.6%.
-2. **Bird (Chim) $\leftrightarrow$ Deer / Frog:** Trong Transfer Learning, Bird chỉ đạt 61.8% độ chính xác do độ phân giải nội suy 32x32 lên 128x128 làm mờ các chi tiết vi mô (lông vũ, mỏ chim) trên nền cây cối xanh. Fine-tuning cho phép tầng tích chập thích nghi với kết cấu đặc thù, đưa độ chính xác lên 90.4%.
+2. **Bird (Chim) $\leftrightarrow$ Deer / Frog:** Trong Transfer Learning, Bird đạt 61.8% độ chính xác do độ phân giải nội suy 32x32 lên 128x128 làm mờ các chi tiết vi mô (lông vũ, mỏ chim) trên nền cây cối xanh. Fine-tuning cho phép tầng tích chập thích nghi với kết cấu đặc thù, đưa độ chính xác lên 90.4%.
 3. **Automobile (Ô tô con) $\leftrightarrow$ Truck (Xe tải):** Nhầm lẫn chủ yếu ở các góc chụp phía trước hoặc sau có hình dáng hộp kim loại và bánh xe tương đồng. DenseNet121 Fine-tuning phân biệt cặp này rất tốt (Truck đạt 95.5%, Automobile đạt 93.0%).
 - *Giao diện trực quan:* Trực quan hóa chi tiết và trích xuất tự động có sẵn trong notebook [`notebooks/Lab2_Results_Analysis.ipynb`](../notebooks/Lab2_Results_Analysis.ipynb).
 
@@ -98,14 +99,16 @@ Phân tích trích xuất từ ma trận nhầm lẫn (`confusion_matrix`):
 
 ## 6. Giới hạn Nghiên cứu Hiện tại (Current Limitations)
 
-1. **Ràng buộc phần cứng CPU & Thời gian thực thi:** 
-   Máy tính phát triển sử dụng CPU Intel Core i5-12450HX không có GPU rời NVIDIA. Thời gian huấn luyện 5 epochs trên 45.000 mẫu với ảnh 128x128 đòi hỏi khoảng 30 - 60 phút cho mỗi thí nghiệm.
+1. **Môi trường phần cứng thực nghiệm:** 
+   Các thí nghiệm chính thức 5 epoch được ghi nhận chạy trên môi trường GPU NVIDIA hỗ trợ CUDA (PyTorch 2.6.0+cu124, thời gian từ 5m 35s đến 10m 42s). Khi chạy lại toàn bộ trên phần cứng CPU đơn thuần, thời gian tính toán sẽ kéo dài hơn nhiều.
 2. **Nội suy phóng to ảnh (Bilinear Interpolation Artifacts):**
    Ảnh gốc CIFAR-10 có độ phân giải gốc $32 \times 32$. Khi phóng to 4 lần lên $128 \times 128$ để nạp vào các mô hình pretrained ImageNet, các chi tiết tần số cao bị mờ hóa (blurring), khiến mô hình khó phân biệt các đặc trưng vi mô của các lớp tương đồng.
-3. **Giới hạn hạt giống ngẫu nhiên đơn lẻ (Single-Seed Limitation):**
-   Mọi thực nghiệm hiện tại được kiểm soát ở một hạt giống cố định (`seed=42`). Do đó, số liệu đo lường chưa thể hiện khoảng tin cậy hay phương sai thống kê (mean ± standard deviation) qua nhiều lần chạy ngẫu nhiên độc lập.
+3. **Giới hạn 5 epochs và đơn seed:**
+   Mọi thực nghiệm hiện tại được kiểm soát ở một hạt giống cố định (`seed=42`) qua 5 epochs. Do đó, 5 epochs chưa đủ để khẳng định sự hội tụ tuyệt đối của mô hình và số liệu đo lường chưa thể hiện khoảng tin cậy hay phương sai thống kê (mean ± standard deviation) qua nhiều lần chạy ngẫu nhiên độc lập.
 4. **Hành vi cập nhật bộ đệm BatchNorm khi đóng băng Backbone (Thực nghiệm kiểm tra):**
    Đo lường thực nghiệm (`scripts/check_frozen_bn.py`) chỉ ra rằng trong chế độ `model.train()`, 100% bộ đệm BatchNorm (`running_mean`, `running_var`) của backbone đóng băng vẫn bị cập nhật theo batch CIFAR-10 hiện tại. Điều này có thể dẫn đến trôi phân phối đặc trưng đã học từ ImageNet.
+5. **Phân chia tập dữ liệu chưa phân tầng:**
+   Phép chia train/val dùng `random_split()` với seed cố định theo yêu cầu của Practice 2; phương pháp này đảm bảo tính tái lập nhưng chưa đảm bảo tỷ lệ lớp hoàn toàn đồng đều giữa train và validation.
 
 ---
 
@@ -113,9 +116,9 @@ Phân tích trích xuất từ ma trận nhầm lẫn (`confusion_matrix`):
 
 1. **Đóng băng tường minh BatchNorm ở chế độ Eval (Frozen BatchNorm in Eval Mode):**
    Bổ sung phương thức chuyển riêng biệt các lớp `nn.BatchNorm2d` của backbone về `module.eval()` trong suốt vòng lặp train để giữ nguyên 100% thống kê tiền huấn luyện ImageNet.
-2. **Đánh giá đa hạt giống (Multi-Seed Evaluation):**
-   Thực thi mỗi thí nghiệm trên ít nhất 3 hạt giống khác nhau (`seed = [0, 42, 123]`) để tính giá trị trung bình và độ lệch chuẩn, khẳng định độ tin cậy thống kê của các kết luận so sánh.
+2. **Đánh giá đa hạt giống (Multi-Seed Evaluation) & Stratified Split:**
+   Thực thi mỗi thí nghiệm trên ít nhất 3 hạt giống khác nhau (`seed = [0, 42, 123]`) kết hợp phân chia train/val phân tầng theo lớp để tính giá trị trung bình và độ lệch chuẩn, khẳng định độ tin cậy thống kê của các kết luận so sánh.
 3. **Bộ điều chỉnh tốc độ học (Learning Rate Scheduler):**
-   Tích hợp `torch.optim.lr_scheduler.CosineAnnealingLR` hoặc `ReduceLROnPlateau` để giảm dần learning rate ở các epoch cuối, hỗ trợ mô hình hội tụ sâu hơn vào cực tiểu địa phương tối ưu.
-4. **Mở rộng phần cứng:**
-   Sử dụng môi trường GPU (như Google Colab T4 hoặc máy trạm CUDA) để tăng kích thước ảnh lên chuẩn ImageNet 224x224 và huấn luyện số lượng epochs lớn hơn (10 - 20 epochs).
+   Tích hợp `torch.optim.lr_scheduler.CosineAnnealingLR` hoặc `ReduceLROnPlateau` để giảm dần learning rate ở các epoch cuối, hỗ trợ mô hình tiếp tục tối ưu ở các epoch tiếp theo.
+4. **Mở rộng thời gian huấn luyện và độ phân giải ảnh:**
+   Tăng kích thước ảnh lên chuẩn ImageNet $224 \times 224$ và huấn luyện số lượng epochs lớn hơn (10 - 20 epochs) trên GPU để khảo sát hành vi hội tụ dài hạn của mô hình.
