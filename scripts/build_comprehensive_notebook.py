@@ -623,10 +623,10 @@ Giám sát trực quan tiến trình huấn luyện qua 4 tab công cụ của T
 4. **Histograms:** Phân phối trọng số và gradient của từng lớp theo thời gian."""))
 
     cells.append(nbf.v4.new_code_cell("""tb_figures = [
-    ("docs/figures/tensorboard_scalar/tensorboard_scalars.png", "Biểu đồ Scalars (Loss và Accuracy theo Epoch)"),
-    ("docs/figures/tensorboard_graph/resnet18_transfer.png", "Đồ thị kiến trúc mạng (Computational Graph)"),
-    ("docs/figures/tensorboard_image/resnet18_transfer.png", "Lưới ảnh đầu vào trong TensorBoard (Images tab)"),
-    ("docs/figures/tensorboard_histogram/fc_weight.png", "Phân phối trọng số mô hình (Histograms tab)")
+    ("outputs/figures/tensorboard_scalar/tensorboard_scalars.png", "Biểu đồ Scalars (Loss và Accuracy theo Epoch)"),
+    ("outputs/figures/tensorboard_graph/resnet18_transfer.png", "Đồ thị kiến trúc mạng (Computational Graph)"),
+    ("outputs/figures/tensorboard_image/resnet18_transfer.png", "Lưới ảnh đầu vào trong TensorBoard (Images tab)"),
+    ("outputs/figures/tensorboard_histogram/fc_weight.png", "Phân phối trọng số mô hình (Histograms tab)")
 ]
 
 for path, desc in tb_figures:
@@ -1068,7 +1068,7 @@ Dự án đã hoàn thành xuất sắc mục tiêu nghiên cứu và thực ngh
 Dữ liệu đo đạc chi tiết từng epoch được lưu trữ đầy đủ trong thư mục `outputs/metrics/`.
 
 ### 12.6. Hình ảnh minh họa và biểu đồ bổ sung
-Tất cả hình ảnh kiến trúc, biểu đồ tham số, đồ thị TensorBoard và ma trận nhầm lẫn được lưu trữ tập trung tại `docs/figures/` và `outputs/figures/`.
+Tất cả hình ảnh kiến trúc, biểu đồ tham số, đồ thị TensorBoard và ma trận nhầm lẫn được lưu trữ tập trung tại `outputs/figures/` và `outputs/figures/`.
 
 ### 12.7. Các thông tin cần thiết để tái lập dự án
 Để tái lập toàn bộ dự án từ đầu từ giao diện dòng lệnh:

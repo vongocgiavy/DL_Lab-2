@@ -16,7 +16,7 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-FIGURES_DIR = os.path.join(PROJECT_ROOT, "docs", "figures")
+FIGURES_DIR = os.path.join(PROJECT_ROOT, "outputs", "figures")
 os.makedirs(FIGURES_DIR, exist_ok=True)
 
 

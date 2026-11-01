@@ -3,7 +3,7 @@
 **Tập dữ liệu:** CIFAR-10 (Canadian Institute For Advanced Research)  
 **Quy mô:** 60.000 ảnh màu RGB 3 kênh, 10 lớp cân bằng  
 **Module triển khai:** [`src/lab2/data.py`](file:///d:/Hoc_Sau/Lab 2/src/lab2/data.py)  
-**Tệp trực quan hóa:** [`docs/figures/cifar10_raw_samples_grid.png`](file:///d:/Hoc_Sau/Lab 2/docs/figures/cifar10_raw_samples_grid.png), [`docs/figures/cifar10_raw_distribution.png`](file:///d:/Hoc_Sau/Lab 2/docs/figures/cifar10_raw_distribution.png), [`docs/figures/cifar10_raw_pca.png`](file:///d:/Hoc_Sau/Lab 2/docs/figures/cifar10_raw_pca.png)
+**Tệp trực quan hóa:** [`outputs/figures/cifar10_raw_samples_grid.png`](file:///d:/Hoc_Sau/Lab 2/outputs/figures/cifar10_raw_samples_grid.png), [`outputs/figures/cifar10_raw_distribution.png`](file:///d:/Hoc_Sau/Lab 2/outputs/figures/cifar10_raw_distribution.png), [`outputs/figures/cifar10_raw_pca.png`](file:///d:/Hoc_Sau/Lab 2/outputs/figures/cifar10_raw_pca.png)
 
 ---
 
@@ -66,11 +66,11 @@ ResNet-18 và DenseNet-121 có kiến trúc gồm 5 tầng giảm mẫu liên ti
 ## 4. TRỰC QUAN HÓA DỮ LIỆU THÔ
 
 ### 4.1. Lưới ảnh mẫu đại diện 10 lớp đối tượng
-Tệp hình ảnh: [`docs/figures/cifar10_raw_samples_grid.png`](file:///d:/Hoc_Sau/Lab 2/docs/figures/cifar10_raw_samples_grid.png)  
+Tệp hình ảnh: [`outputs/figures/cifar10_raw_samples_grid.png`](file:///d:/Hoc_Sau/Lab 2/outputs/figures/cifar10_raw_samples_grid.png)  
 Hiển thị trực quan $60$ ảnh mẫu ($10$ lớp $\times 6$ mẫu/lớp) ở độ phân giải gốc $32 \times 32$, minh họa sự đa dạng về góc nhìn, màu lông động vật, phương tiện giao thông và nền ảnh.
 
 ### 4.2. Thống kê phân bố lớp và cường độ điểm ảnh 3 kênh RGB
-Tệp hình ảnh: [`docs/figures/cifar10_raw_distribution.png`](file:///d:/Hoc_Sau/Lab 2/docs/figures/cifar10_raw_distribution.png)
+Tệp hình ảnh: [`outputs/figures/cifar10_raw_distribution.png`](file:///d:/Hoc_Sau/Lab 2/outputs/figures/cifar10_raw_distribution.png)
 - Cả 10 lớp đều có chính xác $6.000$ ảnh, loại bỏ hoàn toàn nguy cơ thiên vị lớp do mất cân bằng dữ liệu.
 - Phân phối cường độ điểm ảnh của CIFAR-10 thô:
   - Kênh Đỏ (R): $\mu = 0,491, \quad \sigma = 0,247$
@@ -81,7 +81,7 @@ Tệp hình ảnh: [`docs/figures/cifar10_raw_distribution.png`](file:///d:/Hoc_
 
 ## 5. PHÂN TÍCH THÀNH PHẦN CHÍNH (PCA) TRÊN PIXEL THÔ
 
-Tệp hình ảnh: [`docs/figures/cifar10_raw_pca.png`](file:///d:/Hoc_Sau/Lab 2/docs/figures/cifar10_raw_pca.png)  
+Tệp hình ảnh: [`outputs/figures/cifar10_raw_pca.png`](file:///d:/Hoc_Sau/Lab 2/outputs/figures/cifar10_raw_pca.png)  
 Script thực thi: [`scripts/visualize_raw_pca.py`](file:///d:/Hoc_Sau/Lab 2/scripts/visualize_raw_pca.py)
 
 ### 5.1. Kết quả giảm chiều từ 3.072D về 2D (PC1 vs. PC2)

@@ -1,6 +1,6 @@
 """
 Script to generate the Experiment Monitoring Architecture Diagram for Lab 2.
-Generates: docs/figures/monitoring_architecture.png
+Generates: outputs/figures/monitoring_architecture.png
 Visualizes:
 - Training & Validation Engine
 - TensorBoardLogger Streams (Scalars, Histograms, Images, Graph)
@@ -24,7 +24,7 @@ import matplotlib.patches as patches
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, ".."))
-FIGURES_DIR = os.path.join(PROJECT_ROOT, "docs", "figures")
+FIGURES_DIR = os.path.join(PROJECT_ROOT, "outputs", "figures")
 os.makedirs(FIGURES_DIR, exist_ok=True)
 
 

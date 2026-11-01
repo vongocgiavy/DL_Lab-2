@@ -24,6 +24,8 @@ outputs/figures/*
 !outputs/figures/.gitkeep
 !outputs/metrics/*.json
 !outputs/metrics/*.csv
+!outputs/figures/**/
+!outputs/figures/**/*.png
 !outputs/figures/*.png
 
 # Logs

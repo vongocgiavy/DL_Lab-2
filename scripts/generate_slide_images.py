@@ -25,7 +25,7 @@ import numpy as np
 
 os.environ["MPLCONFIGDIR"] = os.path.join(os.path.expanduser("~"), "AppData", "Local", "Temp", "mpl_cache")
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SLIDES_DIR = os.path.join(PROJECT_ROOT, "docs", "figures", "slides")
+SLIDES_DIR = os.path.join(PROJECT_ROOT, "outputs", "figures", "slides")
 os.makedirs(SLIDES_DIR, exist_ok=True)
 
 

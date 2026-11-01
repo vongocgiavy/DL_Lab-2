@@ -2,7 +2,7 @@
 
 **Chủ đề:** Thiết kế vòng lặp huấn luyện, tối ưu hóa tốc độ học vi phân (Differential LR), kiểm soát an toàn nguyên tử (Atomic Checkpoint) và hệ thống giám sát TensorBoard  
 **Module triển khai:** [`src/lab2/train.py`](file:///d:/Hoc_Sau/Lab 2/src/lab2/train.py), [`src/lab2/checkpoint.py`](file:///d:/Hoc_Sau/Lab 2/src/lab2/checkpoint.py), [`src/lab2/tensorboard_logger.py`](file:///d:/Hoc_Sau/Lab 2/src/lab2/tensorboard_logger.py)  
-**Tệp sơ đồ:** [`docs/figures/monitoring_architecture.png`](file:///d:/Hoc_Sau/Lab 2/docs/figures/monitoring_architecture.png), [`docs/figures/slide_08_train_validation_checkpoint.png`](file:///d:/Hoc_Sau/Lab 2/docs/figures/slides/slide_08_train_validation_checkpoint.png)
+**Tệp sơ đồ:** [`outputs/figures/monitoring_architecture.png`](file:///d:/Hoc_Sau/Lab 2/outputs/figures/monitoring_architecture.png), [`outputs/figures/slide_08_train_validation_checkpoint.png`](file:///d:/Hoc_Sau/Lab 2/outputs/figures/slides/slide_08_train_validation_checkpoint.png)
 
 ---
 
@@ -109,7 +109,7 @@ if is_best:
 
 ## 5. HỆ THỐNG GIÁM SÁT THỜI GIAN THỰC (TENSORBOARD MONITORING)
 
-Tệp sơ đồ kiến trúc: [`docs/figures/monitoring_architecture.png`](file:///d:/Hoc_Sau/Lab 2/docs/figures/monitoring_architecture.png)
+Tệp sơ đồ kiến trúc: [`outputs/figures/monitoring_architecture.png`](file:///d:/Hoc_Sau/Lab 2/outputs/figures/monitoring_architecture.png)
 
 Hệ thống tích hợp module [`TensorBoardLogger`](file:///d:/Hoc_Sau/Lab 2/src/lab2/tensorboard_logger.py) truyền phát 4 luồng dữ liệu song song:
 1. **Scalars Monitor:** Theo dõi đường cong `Loss/train`, `Loss/val`, `Accuracy/train`, `Accuracy/val` và thời gian thực thi từng epoch, cho phép phát hiện sớm hiện tượng quá khớp.

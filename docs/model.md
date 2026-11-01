@@ -2,7 +2,7 @@
 
 **Chủ đề:** Khảo sát kiến trúc mạng dư học sâu (ResNet-18) và mạng kết nối dày đặc (DenseNet-121) tiền huấn luyện trên ImageNet  
 **Module triển khai:** [`src/lab2/models.py`](file:///d:/Hoc_Sau/Lab 2/src/lab2/models.py)  
-**Tệp biểu đồ:** [`docs/figures/model_parameters_comparison.png`](file:///d:/Hoc_Sau/Lab 2/docs/figures/model_parameters_comparison.png), [`docs/figures/transfer_vs_finetune.png`](file:///d:/Hoc_Sau/Lab 2/docs/figures/transfer_vs_finetune.png)
+**Tệp biểu đồ:** [`outputs/figures/model_parameters_comparison.png`](file:///d:/Hoc_Sau/Lab 2/outputs/figures/model_parameters_comparison.png), [`outputs/figures/transfer_vs_finetune.png`](file:///d:/Hoc_Sau/Lab 2/outputs/figures/transfer_vs_finetune.png)
 
 ---
 

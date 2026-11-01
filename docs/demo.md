@@ -83,15 +83,15 @@ python scripts/inspect_models.py
 ```bash
 # 1. Trực quan hóa lưới ảnh thô 10 lớp và phân bố RGB
 python scripts/visualize_raw_data.py
-# -> Xuất file: docs/figures/cifar10_raw_samples_grid.png & cifar10_raw_distribution.png
+# -> Xuất file: outputs/figures/cifar10_raw_samples_grid.png & cifar10_raw_distribution.png
 
 # 2. Phân tích Thành phần Chính (PCA) trên pixel thô 3072 chiều
 python scripts/visualize_raw_pca.py
-# -> Xuất file: docs/figures/cifar10_raw_pca.png
+# -> Xuất file: outputs/figures/cifar10_raw_pca.png
 
 # 3. Sinh sơ đồ kiến trúc giám sát (Monitoring Diagram)
 python scripts/generate_monitoring_diagram.py
-# -> Xuất file: docs/figures/monitoring_architecture.png
+# -> Xuất file: outputs/figures/monitoring_architecture.png
 ```
 
 ### 3.3. Đánh giá Checkpoint và Tổng hợp bảng kết quả

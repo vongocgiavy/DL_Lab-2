@@ -47,7 +47,7 @@
 | **M9** | Bộ kiểm thử tự động 53 unit & integration tests | [`tests/`](file:///d:/Hoc_Sau/Lab 2/tests/) | **HOÀN THÀNH 100%** |
 | **M10** | Trực quan hóa dữ liệu thô, PCA và kiến trúc giám sát | [`scripts/visualize_raw_pca.py`](file:///d:/Hoc_Sau/Lab 2/scripts/visualize_raw_pca.py) | **HOÀN THÀNH 100%** |
 | **M11** | Chạy đầy đủ 6 thí nghiệm và tổng hợp metrics JSON / CSV | [`outputs/metrics/summary.csv`](file:///d:/Hoc_Sau/Lab 2/outputs/metrics/summary.csv) | **HOÀN THÀNH 100%** |
-| **M12** | Bộ 10 slide thuyết trình kết hợp kiến trúc và code thực tế | [`docs/figures/slides/`](file:///d:/Hoc_Sau/Lab 2/docs/figures/slides/) | **HOÀN THÀNH 100%** |
+| **M12** | Bộ 10 slide thuyết trình kết hợp kiến trúc và code thực tế | [`outputs/figures/slides/`](file:///d:/Hoc_Sau/Lab 2/outputs/figures/slides/) | **HOÀN THÀNH 100%** |
 
 ---
 

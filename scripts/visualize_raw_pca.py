@@ -1,6 +1,6 @@
 """
 Script to compute and visualize PCA (Principal Component Analysis) on Raw CIFAR-10 data.
-Generates: docs/figures/cifar10_raw_pca.png
+Generates: outputs/figures/cifar10_raw_pca.png
 Clean, publication-ready layout with ZERO text overlap.
 """
 
@@ -23,7 +23,7 @@ import torchvision.datasets as datasets
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, ".."))
-FIGURES_DIR = os.path.join(PROJECT_ROOT, "docs", "figures")
+FIGURES_DIR = os.path.join(PROJECT_ROOT, "outputs", "figures")
 os.makedirs(FIGURES_DIR, exist_ok=True)
 
 
